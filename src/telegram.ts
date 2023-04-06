@@ -146,7 +146,7 @@ If you want to reset the conversation, type /reset
 
     private async reply(ctx: MyContext, message: string) {
         // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
-        await ctx.reply(this.escape(message), this.getReplyArgs(ctx));
+        await ctx.reply(message, this.getReplyArgs(ctx));
     }
 
     private escape(text: string) {
