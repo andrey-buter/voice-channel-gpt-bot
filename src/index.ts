@@ -1,3 +1,4 @@
 import { TelegramBotMessageHandler } from './telegram';
 
-new TelegramBotMessageHandler();
+export const bot = new TelegramBotMessageHandler();
+

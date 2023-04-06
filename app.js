@@ -1,10 +1,12 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 
 // https://stackoverflow.com/questions/8313628/node-js-request-how-to-emitter-setmaxlisteners
 require('events').EventEmitter.prototype._maxListeners = 100;
 
-Object.defineProperty(exports, "__esModule", { value: true });
-const app = require("./build/index.js");
+const app = require("./build/index");
+
+app.bot.testLog();
 
 // var http = require('http');
 // var server = http.createServer(function(req, res) {

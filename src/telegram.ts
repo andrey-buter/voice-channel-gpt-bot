@@ -72,6 +72,9 @@ If you want to reset the conversation, type /reset
 
         initConverter();
 
+    }
+
+    public testLog() {
         console.log('Telegram is init!');
     }
 

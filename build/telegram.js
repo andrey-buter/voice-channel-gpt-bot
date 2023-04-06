@@ -96,6 +96,9 @@ If you want to reset the conversation, type /reset
         this.bot.launch();
         (0, utils_1.initConverter)();
     }
+    testLog() {
+        console.log('Telegram is init!');
+    }
     doForAllowedUserOrAction(ctx, cb) {
         var _a;
         return __awaiter(this, void 0, void 0, function* () {
