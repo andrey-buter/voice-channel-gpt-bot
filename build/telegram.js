@@ -163,7 +163,7 @@ If you want to reset the conversation, type /reset
     reply(ctx, message) {
         return __awaiter(this, void 0, void 0, function* () {
             // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
-            yield ctx.reply(this.escape(message), this.getReplyArgs(ctx));
+            yield ctx.reply(message, this.getReplyArgs(ctx));
         });
     }
     escape(text) {
