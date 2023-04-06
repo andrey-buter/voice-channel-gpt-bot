@@ -14,6 +14,7 @@ const openai_1 = require("openai");
 const env_1 = require("./env");
 const configuration = new openai_1.Configuration({
     apiKey: env_1.ENV_VARS.OPEN_AI_KEY,
+    organization: 'org-yWqzBazHBpa1PdXNiacrGUY6'
 });
 class OpenAiEngine {
     constructor() {
