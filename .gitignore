@@ -1,0 +1,10 @@
+node_modules
+.git
+tmp
+live-db
+logs
+.idea
+.env
+
+*.mp3
+*.oga

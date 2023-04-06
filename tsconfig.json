@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "rootDir": "./src",
+    "outDir": "./build",
+    "esModuleInterop": true,
+//    "allowJs": true, // падает билд изи него
+    "strict": false,
+    "lib": ["es2021", "dom"],
+    "paths": {
+//      "@app/*": [
+//        "./src/*",
+//      ],
+    },
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true
+  },
+  "exclude": [
+    "**/*.skip.ts",
+    "**/_*/*.ts",
+    "node_modules",
+    "./node_modules",
+    "./node_modules/*",
+    "./node_modules/telegraf/*",
+    "./node_modules/@types/node/index.d.ts",
+  ]
+}
