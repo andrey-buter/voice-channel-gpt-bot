@@ -1,14 +1,9 @@
-import { ChatCompletionRequestMessage } from 'openai/api';
 import { Context } from 'telegraf';
+import { AppDb } from './db';
+import { AppTelegramContextAdapter } from './telegram-context-adapter';
+import { MessageSessionId, SessionMessage } from './telegram.types';
 
-export type SessionMessage = ChatCompletionRequestMessage;
-
-// Define your own context type
-export interface MyContext extends Context<any> {
-	session?: SessionData;
-}
-
-type MessageSessionId = string | number;
+type AppContextAdaptor = AppTelegramContextAdapter;
 
 // https://github.com/feathers-studio/telegraf-docs/blob/master/examples/session-bot.ts
 export interface SessionData {
@@ -18,26 +13,39 @@ export interface SessionData {
 export class TelegramSession {
 	private readonly defaultId = 'direct-chat';
 
-	public updateMessages(ctx: MyContext, allMessages: SessionMessage[]) {
-		const id = this.getSessionMessagesByReplyId(ctx);
+	public updateMessages(ctxAdaptor: AppContextAdaptor, allMessages: SessionMessage[]) {
+		const replyMessageId = this.getSessionMessagesByReplyId(ctxAdaptor);
+		const session = ctxAdaptor.getSession();
+		const userId = ctxAdaptor.getUserId();
 
-		if (!ctx.session) {
-			ctx.session = {
-				messages: {},
-			}
+		if (!session.messages) {
+			session.messages = {}
 		}
 
-		ctx.session.messages[id] = allMessages;
+		session.messages[replyMessageId] = allMessages;
+
+		if (allMessages.length) {
+			AppDb.writeHistory(userId, replyMessageId, allMessages);
+		} else {
+			AppDb.deleteHistory(userId, replyMessageId);
+		}
 	}
 
-	public getMessages(ctx: MyContext) {
-		const id = this.getSessionMessagesByReplyId(ctx);
+	public getMessages(ctxAdaptor: AppContextAdaptor) {
+		const replyMessageId = this.getSessionMessagesByReplyId(ctxAdaptor);
+		const userId = ctxAdaptor.getUserId();
+		let history = ctxAdaptor.getSession()?.messages?.[replyMessageId];
 
-		return [...(ctx?.session?.messages?.[id] || [])];
+		if (!history) {
+			history = AppDb.readHistory(userId, replyMessageId);
+		}
+
+		console.log(history)
+
+		return [...(history || [])];
 	}
 
-	private getSessionMessagesByReplyId(ctx: MyContext): MessageSessionId {
-		const message = ctx.update.message;
-		return message.reply_to_message ? message.reply_to_message.message_id : this.defaultId;
+	private getSessionMessagesByReplyId(ctxAdaptor: AppContextAdaptor): MessageSessionId {
+		return ctxAdaptor.getReplyToMessageId() ?? this.defaultId;
 	}
 }

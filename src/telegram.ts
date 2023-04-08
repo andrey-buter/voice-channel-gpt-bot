@@ -6,17 +6,21 @@ import { message } from 'telegraf/filters';
 import { FilteredContext } from 'telegraf/src/context';
 import { ExtraReplyMessage } from 'telegraf/src/telegram-types';
 import { Update } from 'typegram';
+import { AppFileSystem } from './file-system';
 import { OpenAiEngine } from './open-ai';
 import { ENV_VARS } from "./env";
 import { convertOggToMp3, initConverter } from './mpeg.utils';
-import { MyContext, TelegramSession } from './telegram-session';
-import { TelegramReplyMessage } from './telegram.types';
+import { AppTelegramContextAdapter } from './telegram-context-adapter';
+import { TelegramSession } from './telegram-session';
+import { AppContext, TelegramReplyMessage } from './telegram.types';
 import { TextToSpeechEngine } from './text-to-speech';
 
 const download = require('download');
 
+type AppContextAdaptor = AppTelegramContextAdapter;
+
 export class TelegramBotMessageHandler {
-    private readonly bot = new Telegraf<MyContext>(ENV_VARS.TELEGRAM_TOKEN);
+    private readonly bot = new Telegraf<AppContext>(ENV_VARS.TELEGRAM_TOKEN);
     private readonly openAi = new OpenAiEngine();
     private readonly tts = new TextToSpeechEngine();
     private readonly allowedUserIds = ENV_VARS.USER_IDS;
@@ -54,20 +58,27 @@ If you want to reset the conversation, type /reset
             ]);
         });
         this.bot.start(async (ctx: any) => {
-            await this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startMessage));
+            const ctxAdapter = new AppTelegramContextAdapter(ctx);
+            await this.doForAllowedUserOrAction(ctxAdapter, () => this.replyLoading(ctxAdapter, this.startMessage));
         });
-        this.bot.command('teach', async (ctx: MyContext) => {
-            await this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startTeach));
+        this.bot.command('teach', async (ctx: AppContext) => {
+            const ctxAdapter = new AppTelegramContextAdapter(ctx);
+            await this.doForAllowedUserOrAction(ctxAdapter, () => this.replyLoading(ctxAdapter, this.startTeach));
         });
-        this.bot.command('reset', (ctx: MyContext) => this.session.updateMessages(ctx, []));
+        this.bot.command('reset', (ctx: AppContext) => {
+            const ctxAdapter = new AppTelegramContextAdapter(ctx);
+            this.session.updateMessages(ctxAdapter, []);
+        });
 
         // @ts-ignore
-        this.bot.on(message('text'), async (ctx: MyContext) => {
-            await this.doForAllowedUserOrAction(ctx, () => this.onText(ctx));
+        this.bot.on(message('text'), async (ctx: AppContext) => {
+            const ctxAdapter = new AppTelegramContextAdapter(ctx);
+            await this.doForAllowedUserOrAction(ctxAdapter, () => this.onText(ctxAdapter));
         });
         // @ts-ignore
-        this.bot.on(message('voice'), async (ctx: MyContext) => {
-            await this.doForAllowedUserOrAction(ctx, () => this.onVoice(ctx))
+        this.bot.on(message('voice'), async (ctx: AppContext) => {
+            const ctxAdapter = new AppTelegramContextAdapter(ctx);
+            await this.doForAllowedUserOrAction(ctxAdapter, () => this.onVoice(ctxAdapter))
         });
 
         this.bot.launch();
@@ -80,40 +91,40 @@ If you want to reset the conversation, type /reset
         console.log('Telegram is init!');
     }
 
-    private async doForAllowedUserOrAction(ctx: MyContext, cb: (ctx: MyContext) => void) {
+    private async doForAllowedUserOrAction(ctxAdaptor: AppContextAdaptor, cb: (ctx: AppContextAdaptor) => void) {
         // for main channel messages stream: don't react on a new post
-        if (ctx.update.message?.forward_from_chat) {
+        if (ctxAdaptor.getForwardFromChatId()) {
             return;
         }
 
-        if (!this.isAllowed(ctx)) {
-            await this.replyLoading(ctx, this.restrictedMessage);
+        if (!this.isAllowed(ctxAdaptor)) {
+            await this.replyLoading(ctxAdaptor, this.restrictedMessage);
             return;
         }
 
-        await cb(ctx);
+        await cb(ctxAdaptor);
     }
 
-    private isAllowed(ctx: MyContext) {
-        return this.allowedUserIds.includes(ctx.update.message.from.id);
+    private isAllowed(ctxAdaptor: AppContextAdaptor) {
+        return this.allowedUserIds.includes(ctxAdaptor.getUserId());
     }
 
-    private getReplyArgs(ctx: MyContext): ExtraReplyMessage | undefined {
-        const message = ctx.update.message;
-        if (!message.reply_to_message) {
+    private getReplyArgs(ctxAdaptor: AppContextAdaptor): ExtraReplyMessage | undefined {
+        const replayToMessageId = ctxAdaptor.getReplyToMessageId();
+        if (!replayToMessageId) {
             return;
         }
 
         const args: ExtraReplyMessage = {
-            reply_to_message_id: message.reply_to_message.message_id,
+            reply_to_message_id: replayToMessageId,
         }
 
         return args;
     }
 
-    private async onVoice(ctx: any) {
-        const loadingMessage = await this.replyLoading(ctx, `Transcribing...`);
-        const fileLink = await this.bot.telegram.getFileLink(ctx.update.message.voice.file_id);
+    private async onVoice(ctxAdaptor: AppContextAdaptor) {
+        const loadingMessage = await this.replyLoading(ctxAdaptor, `Transcribing...`);
+        const fileLink = await this.bot.telegram.getFileLink(ctxAdaptor.getVoiceFileId());
 
         await download(fileLink.href, this.mediaDir);
         const filename = path.parse(fileLink.pathname).base;
@@ -127,13 +138,13 @@ If you want to reset the conversation, type /reset
                 const response = await this.openAi.transcript(stream);
                 const text = response.data?.text || '';
 
-                await this.editLoadingReply(ctx, loadingMessage, `[Voice message]: ${text}`);
-                await this.fixMistakesReply(ctx, text);
+                await this.editLoadingReply(ctxAdaptor, loadingMessage, `[Voice message]: ${text}`);
+                await this.fixMistakesReply(ctxAdaptor, text);
 
-                await this.chat(ctx, text);
+                await this.chat(ctxAdaptor, text);
             } catch (error) {
                 console.log(error.response.data);
-                await this.editLoadingReply(ctx, loadingMessage, `[ERROR:Transcription] ${error.response.data.error.message}`);
+                await this.editLoadingReply(ctxAdaptor, loadingMessage, `[ERROR:Transcription] ${error.response.data.error.message}`);
             }
 
             this.deleteFile(filePath);
@@ -141,8 +152,8 @@ If you want to reset the conversation, type /reset
         });
     }
 
-    private async fixMistakesReply(ctx: MyContext, text: string) {
-        const loadingMessage = await this.replyLoading(ctx, `Fixing...`);
+    private async fixMistakesReply(ctxAdaptor: AppContextAdaptor, text: string) {
+        const loadingMessage = await this.replyLoading(ctxAdaptor, `Fixing...`);
         const mistakesResp = await this.openAi.chat([{
             content: `Fix the sentence mistakes: ${text}`,
             role: ChatCompletionRequestMessageRoleEnum.User,
@@ -150,16 +161,20 @@ If you want to reset the conversation, type /reset
 
         const fixedText = mistakesResp.data.choices.map(choice => choice?.message?.content).join(" | ");
 
-        await this.editLoadingReply(ctx, loadingMessage, `[Fixed message]: ${fixedText}`);
+        await this.editLoadingReply(ctxAdaptor, loadingMessage, `[Fixed message]: ${fixedText}`);
     }
 
-    private async replyLoading(ctx: MyContext, message: string) {
+    private async replyLoading(ctxAdaptor: AppContextAdaptor, message: string) {
+        return await this.reply(ctxAdaptor, message);
+    }
+
+    private async reply(ctxAdaptor: AppContextAdaptor, message: string) {
         // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
-        return await ctx.reply(message, this.getReplyArgs(ctx)) as any as TelegramReplyMessage;
+        return await ctxAdaptor.ctx.reply(message, this.getReplyArgs(ctxAdaptor)) as any as TelegramReplyMessage;
     }
 
-    private async editLoadingReply(ctx: MyContext, message: TelegramReplyMessage, text: string) {
-        await ctx.telegram.editMessageText(message.chat.id, message.message_id, undefined, text);
+    private async editLoadingReply(ctxAdaptor: AppContextAdaptor, message: TelegramReplyMessage, text: string) {
+        await ctxAdaptor.telegram.editMessageText(message.chat.id, message.message_id, undefined, text);
     }
 
     private escape(text: string) {
@@ -172,55 +187,59 @@ If you want to reset the conversation, type /reset
     }
 
     private deleteFile(filePath: string) {
-        fs.unlink(filePath, (err) => {
-            if (err) {
-                throw err;
-            }
-        });
+        AppFileSystem.deleteFileOrDir(filePath);
     }
 
     // private async onText(ctx: FilteredContext<MyContext, Extract<Update, 'Update.MessageUpdate'>>) {
-    private async onText(ctx: MyContext) {
-        await this.chat(ctx, ctx.update.message.text);
+    private async onText(ctxAdaptor: AppContextAdaptor) {
+        await this.chat(ctxAdaptor, ctxAdaptor.getText());
     }
 
-    private async chat(ctx: any, userMessage: string) {
-        const loadingMessage = await this.replyLoading(ctx, `Loading...`);
-        const sessionMessages = this.session.getMessages(ctx);
+    private async chat(ctxAdaptor: AppContextAdaptor, userMessage: string) {
+        const loadingMessage = await this.replyLoading(ctxAdaptor, `Loading...`);
+        const sessionMessages = this.session.getMessages(ctxAdaptor);
 
         sessionMessages.push({
             content: userMessage,
             role: ChatCompletionRequestMessageRoleEnum.User,
         });
 
+        let text = '';
+
         try {
             const response = await this.openAi.chat(sessionMessages);
-            const text = response.data.choices.map(choice => choice?.message?.content).join(" | ");
+            text = response.data.choices.map(choice => choice?.message?.content).join(" | ");
 
             sessionMessages.push({
                 content: text,
                 role: ChatCompletionRequestMessageRoleEnum.Assistant,
             });
 
-            this.session.updateMessages(ctx, sessionMessages);
-            await this.editLoadingReply(ctx, loadingMessage, text);
+            this.session.updateMessages(ctxAdaptor, sessionMessages);
+            await this.editLoadingReply(ctxAdaptor, loadingMessage, text);
+        } catch (error) {
+            console.error(error);
+            const text = `[ERROR:ChatGPT]: ${error.response?.data?.error?.message || error.response?.description || error.response}`;
+            await this.editLoadingReply(ctxAdaptor, loadingMessage, text);
+        }
+
+        try {
             const convertedFilePath = await this.tts.convert(text);
 
             if (convertedFilePath) {
-                await this.sendAudio(ctx, convertedFilePath, text);
+                await this.sendAudio(ctxAdaptor, convertedFilePath, text);
                 this.deleteFile(convertedFilePath);
             }
         } catch (error) {
-            console.error(error);
-            const text = `[ERROR:ChatGPT]: ${error.response?.data?.error?.message || error.response.description}`;
-            await this.editLoadingReply(ctx, loadingMessage, text);
+            console.log(error);
+            await this.reply(ctxAdaptor, `[Text To Speech Error]: ${error}`);
         }
     }
 
-    private async sendAudio(ctx: MyContext, filePath: string, text: string) {
+    private async sendAudio(ctxAdaptor: AppContextAdaptor, filePath: string, text: string) {
         const readStream = fs.createReadStream(filePath);
 
-        await ctx.sendAudio({ source: readStream, filename: this.cutAudioName(text) }, this.getReplyArgs(ctx));
+        await ctxAdaptor.ctx.sendAudio({ source: readStream, filename: this.cutAudioName(text) }, this.getReplyArgs(ctxAdaptor));
     }
 
     private cutAudioName(text: string) {
@@ -241,4 +260,3 @@ If you want to reset the conversation, type /reset
         }
     }
 }
-

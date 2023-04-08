@@ -1,3 +1,15 @@
+import { ChatCompletionRequestMessage } from 'openai/api';
+import { Context } from 'telegraf';
+import { SessionData } from './telegram-session';
+
+export type SessionMessage = ChatCompletionRequestMessage;
+
+export interface AppContext extends Context<any> {
+	session?: SessionData;
+}
+
+export type MessageSessionId = string | number;
+
 export interface TelegramReplyMessage {
 	message_id: number;
 	from: {

@@ -21,7 +21,7 @@ export class TextToSpeechEngine {
 	public async convert(text: string): Promise<string | undefined> {
 		const command = new SynthesizeSpeechCommand({
 			...this.params,
-			Text: text,
+			Text: text.replaceAll('"', '\"'),
 		});
 
 		const filePath = `${this.mediaDir}/polly-${this.currentFileId++}.mp3`;
