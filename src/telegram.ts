@@ -8,15 +8,17 @@ import { ExtraReplyMessage } from 'telegraf/src/telegram-types';
 import { Update } from 'typegram';
 import { OpenAiEngine } from './open-ai';
 import { ENV_VARS } from "./env";
-import { convertOggToMp3, initConverter } from './utils';
+import { convertOggToMp3, initConverter } from './mpeg.utils';
 import { MyContext, TelegramSession } from './telegram-session';
+import { TelegramReplyMessage } from './telegram.types';
+import { TextToSpeechEngine } from './text-to-speech';
 
 const download = require('download');
-
 
 export class TelegramBotMessageHandler {
     private readonly bot = new Telegraf<MyContext>(ENV_VARS.TELEGRAM_TOKEN);
     private readonly openAi = new OpenAiEngine();
+    private readonly tts = new TextToSpeechEngine();
     private readonly allowedUserIds = ENV_VARS.USER_IDS;
 
     private readonly restrictedMessage = 'Sorry. You are not registered. Have a nice day!';
@@ -34,7 +36,7 @@ If you want to reset the conversation, type /reset
 // Then you ask the next question. Let's go!
 // `;
 
-    private readonly mediaDir = 'tmp-media';
+    private readonly mediaDir = ENV_VARS.TMP_MEDIA_DIR;
     private readonly session = new TelegramSession();
 
     constructor() {
@@ -52,10 +54,10 @@ If you want to reset the conversation, type /reset
             ]);
         });
         this.bot.start(async (ctx: any) => {
-            await this.doForAllowedUserOrAction(ctx, () => this.reply(ctx, this.startMessage));
+            await this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startMessage));
         });
         this.bot.command('teach', async (ctx: MyContext) => {
-            await this.doForAllowedUserOrAction(ctx, () => this.reply(ctx, this.startTeach));
+            await this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startTeach));
         });
         this.bot.command('reset', (ctx: MyContext) => this.session.updateMessages(ctx, []));
 
@@ -85,7 +87,7 @@ If you want to reset the conversation, type /reset
         }
 
         if (!this.isAllowed(ctx)) {
-            await this.reply(ctx, this.restrictedMessage);
+            await this.replyLoading(ctx, this.restrictedMessage);
             return;
         }
 
@@ -110,6 +112,7 @@ If you want to reset the conversation, type /reset
     }
 
     private async onVoice(ctx: any) {
+        const loadingMessage = await this.replyLoading(ctx, `Transcribing...`);
         const fileLink = await this.bot.telegram.getFileLink(ctx.update.message.voice.file_id);
 
         await download(fileLink.href, this.mediaDir);
@@ -124,13 +127,13 @@ If you want to reset the conversation, type /reset
                 const response = await this.openAi.transcript(stream);
                 const text = response.data?.text || '';
 
-                await this.reply(ctx, `[Voice message]: ${text}`);
+                await this.editLoadingReply(ctx, loadingMessage, `[Voice message]: ${text}`);
                 await this.fixMistakesReply(ctx, text);
 
                 await this.chat(ctx, text);
             } catch (error) {
-                console.log(error.response.data)
-                await this.reply(ctx, `[ERROR:Transcription] ${error.response.data.error.message}`);
+                console.log(error.response.data);
+                await this.editLoadingReply(ctx, loadingMessage, `[ERROR:Transcription] ${error.response.data.error.message}`);
             }
 
             this.deleteFile(filePath);
@@ -139,6 +142,7 @@ If you want to reset the conversation, type /reset
     }
 
     private async fixMistakesReply(ctx: MyContext, text: string) {
+        const loadingMessage = await this.replyLoading(ctx, `Fixing...`);
         const mistakesResp = await this.openAi.chat([{
             content: `Fix the sentence mistakes: ${text}`,
             role: ChatCompletionRequestMessageRoleEnum.User,
@@ -146,12 +150,16 @@ If you want to reset the conversation, type /reset
 
         const fixedText = mistakesResp.data.choices.map(choice => choice?.message?.content).join(" | ");
 
-        await this.reply(ctx, `[Fixed message]: ${fixedText}`);
+        await this.editLoadingReply(ctx, loadingMessage, `[Fixed message]: ${fixedText}`);
     }
 
-    private async reply(ctx: MyContext, message: string) {
+    private async replyLoading(ctx: MyContext, message: string) {
         // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
-        await ctx.reply(message, this.getReplyArgs(ctx));
+        return await ctx.reply(message, this.getReplyArgs(ctx)) as any as TelegramReplyMessage;
+    }
+
+    private async editLoadingReply(ctx: MyContext, message: TelegramReplyMessage, text: string) {
+        await ctx.telegram.editMessageText(message.chat.id, message.message_id, undefined, text);
     }
 
     private escape(text: string) {
@@ -177,6 +185,7 @@ If you want to reset the conversation, type /reset
     }
 
     private async chat(ctx: any, userMessage: string) {
+        const loadingMessage = await this.replyLoading(ctx, `Loading...`);
         const sessionMessages = this.session.getMessages(ctx);
 
         sessionMessages.push({
@@ -194,10 +203,41 @@ If you want to reset the conversation, type /reset
             });
 
             this.session.updateMessages(ctx, sessionMessages);
-            await this.reply(ctx, text);
+            await this.editLoadingReply(ctx, loadingMessage, text);
+            const convertedFilePath = await this.tts.convert(text);
+
+            if (convertedFilePath) {
+                await this.sendAudio(ctx, convertedFilePath, text);
+                this.deleteFile(convertedFilePath);
+            }
         } catch (error) {
             console.error(error);
-            await this.reply(ctx, `[ERROR:ChatGPT]: ${error.response?.data?.error?.message || error.response.description}`);
+            const text = `[ERROR:ChatGPT]: ${error.response?.data?.error?.message || error.response.description}`;
+            await this.editLoadingReply(ctx, loadingMessage, text);
+        }
+    }
+
+    private async sendAudio(ctx: MyContext, filePath: string, text: string) {
+        const readStream = fs.createReadStream(filePath);
+
+        await ctx.sendAudio({ source: readStream, filename: this.cutAudioName(text) }, this.getReplyArgs(ctx));
+    }
+
+    private cutAudioName(text: string) {
+        if (this.isFileNameValid(text)) {
+            return text.slice(0, 64);
+        }
+
+        return 'invalid name';
+    }
+
+    private isFileNameValid(fileName: string) {
+        // https://stackoverflow.com/a/11101624
+        const rg1=/^[^\\/:\*\?"<>\|]+$/; // forbidden characters \ / : * ? " < > |
+        const rg2=/^\./; // cannot start with dot (.)
+        const rg3=/^(nul|prn|con|lpt[0-9]|com[0-9])(\.|$)/i; // forbidden file names
+        return function isValid(fname){
+            return rg1.test(fname)&&!rg2.test(fname)&&!rg3.test(fname);
         }
     }
 }
