@@ -43,13 +43,15 @@ const telegraf_1 = require("telegraf");
 const filters_1 = require("telegraf/filters");
 const open_ai_1 = require("./open-ai");
 const env_1 = require("./env");
-const utils_1 = require("./utils");
+const mpeg_utils_1 = require("./mpeg.utils");
 const telegram_session_1 = require("./telegram-session");
+const text_to_speech_1 = require("./text-to-speech");
 const download = require('download');
 class TelegramBotMessageHandler {
     constructor() {
         this.bot = new telegraf_1.Telegraf(env_1.ENV_VARS.TELEGRAM_TOKEN);
         this.openAi = new open_ai_1.OpenAiEngine();
+        this.tts = new text_to_speech_1.TextToSpeechEngine();
         this.allowedUserIds = env_1.ENV_VARS.USER_IDS;
         this.restrictedMessage = 'Sorry. You are not registered. Have a nice day!';
         this.startMessage = `
@@ -63,7 +65,7 @@ If you want to reset the conversation, type /reset
         // Then check my answer for grammatical errors and offer the correct option.
         // Then you ask the next question. Let's go!
         // `;
-        this.mediaDir = 'tmp-media';
+        this.mediaDir = env_1.ENV_VARS.TMP_MEDIA_DIR;
         this.session = new telegram_session_1.TelegramSession();
         this.bot.use((0, telegraf_1.session)());
         this.bot.settings((ctx) => __awaiter(this, void 0, void 0, function* () {
@@ -79,10 +81,10 @@ If you want to reset the conversation, type /reset
             ]);
         }));
         this.bot.start((ctx) => __awaiter(this, void 0, void 0, function* () {
-            yield this.doForAllowedUserOrAction(ctx, () => this.reply(ctx, this.startMessage));
+            yield this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startMessage));
         }));
         this.bot.command('teach', (ctx) => __awaiter(this, void 0, void 0, function* () {
-            yield this.doForAllowedUserOrAction(ctx, () => this.reply(ctx, this.startTeach));
+            yield this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startTeach));
         }));
         this.bot.command('reset', (ctx) => this.session.updateMessages(ctx, []));
         // @ts-ignore
@@ -94,7 +96,7 @@ If you want to reset the conversation, type /reset
             yield this.doForAllowedUserOrAction(ctx, () => this.onVoice(ctx));
         }));
         this.bot.launch();
-        (0, utils_1.initConverter)();
+        (0, mpeg_utils_1.initConverter)();
     }
     testLog() {
         console.log('Telegram is init!');
@@ -107,7 +109,7 @@ If you want to reset the conversation, type /reset
                 return;
             }
             if (!this.isAllowed(ctx)) {
-                yield this.reply(ctx, this.restrictedMessage);
+                yield this.replyLoading(ctx, this.restrictedMessage);
                 return;
             }
             yield cb(ctx);
@@ -128,25 +130,26 @@ If you want to reset the conversation, type /reset
     }
     onVoice(ctx) {
         return __awaiter(this, void 0, void 0, function* () {
+            const loadingMessage = yield this.replyLoading(ctx, `Transcribing...`);
             const fileLink = yield this.bot.telegram.getFileLink(ctx.update.message.voice.file_id);
             yield download(fileLink.href, this.mediaDir);
             const filename = path_1.default.parse(fileLink.pathname).base;
             const filePath = `./${this.mediaDir}/${filename}`;
             const mp3filePath = `./${this.mediaDir}/${filename}`.replace('.oga', '.mp3');
-            (0, utils_1.convertOggToMp3)(filePath, mp3filePath, () => __awaiter(this, void 0, void 0, function* () {
+            (0, mpeg_utils_1.convertOggToMp3)(filePath, mp3filePath, () => __awaiter(this, void 0, void 0, function* () {
                 var _a;
                 const stream = fs.createReadStream(mp3filePath);
                 try {
                     // @ts-ignore
                     const response = yield this.openAi.transcript(stream);
                     const text = ((_a = response.data) === null || _a === void 0 ? void 0 : _a.text) || '';
-                    yield this.reply(ctx, `[Voice message]: ${text}`);
+                    yield this.editLoadingReply(ctx, loadingMessage, `[Voice message]: ${text}`);
                     yield this.fixMistakesReply(ctx, text);
                     yield this.chat(ctx, text);
                 }
                 catch (error) {
                     console.log(error.response.data);
-                    yield this.reply(ctx, `[ERROR:Transcription] ${error.response.data.error.message}`);
+                    yield this.editLoadingReply(ctx, loadingMessage, `[ERROR:Transcription] ${error.response.data.error.message}`);
                 }
                 this.deleteFile(filePath);
                 this.deleteFile(mp3filePath);
@@ -155,18 +158,24 @@ If you want to reset the conversation, type /reset
     }
     fixMistakesReply(ctx, text) {
         return __awaiter(this, void 0, void 0, function* () {
+            const loadingMessage = yield this.replyLoading(ctx, `Fixing...`);
             const mistakesResp = yield this.openAi.chat([{
                     content: `Fix the sentence mistakes: ${text}`,
                     role: api_1.ChatCompletionRequestMessageRoleEnum.User,
                 }]);
             const fixedText = mistakesResp.data.choices.map(choice => { var _a; return (_a = choice === null || choice === void 0 ? void 0 : choice.message) === null || _a === void 0 ? void 0 : _a.content; }).join(" | ");
-            yield this.reply(ctx, `[Fixed message]: ${fixedText}`);
+            yield this.editLoadingReply(ctx, loadingMessage, `[Fixed message]: ${fixedText}`);
         });
     }
-    reply(ctx, message) {
+    replyLoading(ctx, message) {
         return __awaiter(this, void 0, void 0, function* () {
             // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
-            yield ctx.reply(message, this.getReplyArgs(ctx));
+            return yield ctx.reply(message, this.getReplyArgs(ctx));
+        });
+    }
+    editLoadingReply(ctx, message, text) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield ctx.telegram.editMessageText(message.chat.id, message.message_id, undefined, text);
         });
     }
     escape(text) {
@@ -192,6 +201,7 @@ If you want to reset the conversation, type /reset
     chat(ctx, userMessage) {
         var _a, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
+            const loadingMessage = yield this.replyLoading(ctx, `Loading...`);
             const sessionMessages = this.session.getMessages(ctx);
             sessionMessages.push({
                 content: userMessage,
@@ -205,13 +215,40 @@ If you want to reset the conversation, type /reset
                     role: api_1.ChatCompletionRequestMessageRoleEnum.Assistant,
                 });
                 this.session.updateMessages(ctx, sessionMessages);
-                yield this.reply(ctx, text);
+                yield this.editLoadingReply(ctx, loadingMessage, text);
+                const convertedFilePath = yield this.tts.convert(text);
+                if (convertedFilePath) {
+                    yield this.sendAudio(ctx, convertedFilePath, text);
+                    this.deleteFile(convertedFilePath);
+                }
             }
             catch (error) {
                 console.error(error);
-                yield this.reply(ctx, `[ERROR:ChatGPT]: ${((_c = (_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) || error.response.description}`);
+                const text = `[ERROR:ChatGPT]: ${((_c = (_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) || error.response.description}`;
+                yield this.editLoadingReply(ctx, loadingMessage, text);
             }
         });
+    }
+    sendAudio(ctx, filePath, text) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const readStream = fs.createReadStream(filePath);
+            yield ctx.sendAudio({ source: readStream, filename: this.cutAudioName(text) }, this.getReplyArgs(ctx));
+        });
+    }
+    cutAudioName(text) {
+        if (this.isFileNameValid(text)) {
+            return text.slice(0, 64);
+        }
+        return 'invalid name';
+    }
+    isFileNameValid(fileName) {
+        // https://stackoverflow.com/a/11101624
+        const rg1 = /^[^\\/:\*\?"<>\|]+$/; // forbidden characters \ / : * ? " < > |
+        const rg2 = /^\./; // cannot start with dot (.)
+        const rg3 = /^(nul|prn|con|lpt[0-9]|com[0-9])(\.|$)/i; // forbidden file names
+        return function isValid(fname) {
+            return rg1.test(fname) && !rg2.test(fname) && !rg3.test(fname);
+        };
     }
 }
 exports.TelegramBotMessageHandler = TelegramBotMessageHandler;
