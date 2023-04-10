@@ -4,8 +4,9 @@ tmp
 live-db
 logs
 .idea
-.env
+.env*
 .htaccess
 
 *.mp3
 *.oga
+db
