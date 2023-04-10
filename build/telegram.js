@@ -39,16 +39,21 @@ exports.TelegramBotMessageHandler = void 0;
 const fs = __importStar(require("fs"));
 const api_1 = require("openai/dist/api");
 const path_1 = __importDefault(require("path"));
+const sanitize_filename_ts_1 = require("sanitize-filename-ts");
 const telegraf_1 = require("telegraf");
 const filters_1 = require("telegraf/filters");
+const file_system_1 = require("./file-system");
 const open_ai_1 = require("./open-ai");
 const env_1 = require("./env");
-const mpeg_utils_1 = require("./mpeg.utils");
+const log_utils_1 = require("./utils/log.utils");
+const mpeg_utils_1 = require("./utils/mpeg.utils");
+const telegram_context_adapter_1 = require("./telegram-context-adapter");
 const telegram_session_1 = require("./telegram-session");
 const text_to_speech_1 = require("./text-to-speech");
 const download = require('download');
 class TelegramBotMessageHandler {
     constructor() {
+        // AppFileSystem.createFileOrDir(this.mediaDir);
         this.bot = new telegraf_1.Telegraf(env_1.ENV_VARS.TELEGRAM_TOKEN);
         this.openAi = new open_ai_1.OpenAiEngine();
         this.tts = new text_to_speech_1.TextToSpeechEngine();
@@ -81,57 +86,79 @@ If you want to reset the conversation, type /reset
             ]);
         }));
         this.bot.start((ctx) => __awaiter(this, void 0, void 0, function* () {
-            yield this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startMessage));
+            const ctxAdapter = new telegram_context_adapter_1.AppTelegramContextAdapter(ctx);
+            yield this.doForAllowedUserOrAction(ctxAdapter, () => this.replyLoadingState(ctxAdapter, this.startMessage));
         }));
         this.bot.command('teach', (ctx) => __awaiter(this, void 0, void 0, function* () {
-            yield this.doForAllowedUserOrAction(ctx, () => this.replyLoading(ctx, this.startTeach));
+            const ctxAdapter = new telegram_context_adapter_1.AppTelegramContextAdapter(ctx);
+            yield this.doForAllowedUserOrAction(ctxAdapter, () => this.replyLoadingState(ctxAdapter, this.startTeach));
         }));
-        this.bot.command('reset', (ctx) => this.session.updateMessages(ctx, []));
+        this.bot.command('reset', (ctx) => {
+            const ctxAdapter = new telegram_context_adapter_1.AppTelegramContextAdapter(ctx);
+            this.session.updateMessages(ctxAdapter, []);
+        });
         // @ts-ignore
         this.bot.on((0, filters_1.message)('text'), (ctx) => __awaiter(this, void 0, void 0, function* () {
-            yield this.doForAllowedUserOrAction(ctx, () => this.onText(ctx));
+            const ctxAdapter = new telegram_context_adapter_1.AppTelegramContextAdapter(ctx);
+            yield this.doForAllowedUserOrAction(ctxAdapter, () => this.onText(ctxAdapter));
         }));
         // @ts-ignore
         this.bot.on((0, filters_1.message)('voice'), (ctx) => __awaiter(this, void 0, void 0, function* () {
-            yield this.doForAllowedUserOrAction(ctx, () => this.onVoice(ctx));
+            const ctxAdapter = new telegram_context_adapter_1.AppTelegramContextAdapter(ctx);
+            yield this.doForAllowedUserOrAction(ctxAdapter, () => this.onVoice(ctxAdapter));
         }));
+        this.bot.action(/.+/, (ctx) => {
+            (0, log_utils_1.log)(ctx.update.callback_query);
+            (0, log_utils_1.log)(ctx.match);
+            return ctx.answerCbQuery(`Oh, ${ctx.match[0]}! Great choice`);
+        });
         this.bot.launch();
         (0, mpeg_utils_1.initConverter)();
     }
     testLog() {
-        console.log('Telegram is init!');
+        (0, log_utils_1.log)('Telegram is init!');
     }
-    doForAllowedUserOrAction(ctx, cb) {
-        var _a;
+    doForAllowedUserOrAction(ctxAdaptor, cb) {
         return __awaiter(this, void 0, void 0, function* () {
+            // console.log(ctxAdaptor.ctx.update)
+            if (!this.isAllowed(ctxAdaptor)) {
+                yield this.reply(ctxAdaptor, this.restrictedMessage);
+                return;
+            }
             // for main channel messages stream: don't react on a new post
-            if ((_a = ctx.update.message) === null || _a === void 0 ? void 0 : _a.forward_from_chat) {
+            if (ctxAdaptor.getForwardFromChatId()) {
+                // await this.sendFirstThreadMessage(ctxAdaptor);
                 return;
             }
-            if (!this.isAllowed(ctx)) {
-                yield this.replyLoading(ctx, this.restrictedMessage);
-                return;
-            }
-            yield cb(ctx);
+            yield cb(ctxAdaptor);
         });
     }
-    isAllowed(ctx) {
-        return this.allowedUserIds.includes(ctx.update.message.from.id);
+    sendFirstThreadMessage(ctxAdaptor) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield ctxAdaptor.ctx.sendMessage('What language should be recognized?', Object.assign({ reply_to_message_id: ctxAdaptor.getMessageId() }, telegraf_1.Markup.inlineKeyboard([
+                telegraf_1.Markup.button.callback('English', 'recognition:en'),
+                telegraf_1.Markup.button.callback('Russian', 'recognition:ru'),
+                telegraf_1.Markup.button.callback('Skip', 'recognition:nothing'),
+            ])));
+        });
     }
-    getReplyArgs(ctx) {
-        const message = ctx.update.message;
-        if (!message.reply_to_message) {
+    isAllowed(ctxAdaptor) {
+        return this.allowedUserIds.includes(ctxAdaptor.getUserId());
+    }
+    getReplyArgs(ctxAdaptor) {
+        const replayToMessageId = ctxAdaptor.getReplyToMessageId();
+        if (!replayToMessageId) {
             return;
         }
         const args = {
-            reply_to_message_id: message.reply_to_message.message_id,
+            reply_to_message_id: replayToMessageId,
         };
         return args;
     }
-    onVoice(ctx) {
+    onVoice(ctxAdaptor) {
         return __awaiter(this, void 0, void 0, function* () {
-            const loadingMessage = yield this.replyLoading(ctx, `Transcribing...`);
-            const fileLink = yield this.bot.telegram.getFileLink(ctx.update.message.voice.file_id);
+            const loadingMessage = yield this.replyLoadingState(ctxAdaptor, `Transcribing...`);
+            const fileLink = yield this.bot.telegram.getFileLink(ctxAdaptor.getVoiceFileId());
             yield download(fileLink.href, this.mediaDir);
             const filename = path_1.default.parse(fileLink.pathname).base;
             const filePath = `./${this.mediaDir}/${filename}`;
@@ -143,39 +170,49 @@ If you want to reset the conversation, type /reset
                     // @ts-ignore
                     const response = yield this.openAi.transcript(stream);
                     const text = ((_a = response.data) === null || _a === void 0 ? void 0 : _a.text) || '';
-                    yield this.editLoadingReply(ctx, loadingMessage, `[Voice message]: ${text}`);
-                    yield this.fixMistakesReply(ctx, text);
-                    yield this.chat(ctx, text);
+                    yield this.editLoadingReply(ctxAdaptor, loadingMessage, `[Voice message]: ${text}`);
+                    yield this.fixMistakesReply(ctxAdaptor, text);
+                    yield this.chat(ctxAdaptor, text);
                 }
                 catch (error) {
-                    console.log(error.response.data);
-                    yield this.editLoadingReply(ctx, loadingMessage, `[ERROR:Transcription] ${error.response.data.error.message}`);
+                    (0, log_utils_1.log)(error.response.data);
+                    yield this.editLoadingReply(ctxAdaptor, loadingMessage, `[ERROR:Transcription] ${error.response.data.error.message}`);
                 }
                 this.deleteFile(filePath);
                 this.deleteFile(mp3filePath);
             }));
         });
     }
-    fixMistakesReply(ctx, text) {
+    fixMistakesReply(ctxAdaptor, text) {
         return __awaiter(this, void 0, void 0, function* () {
-            const loadingMessage = yield this.replyLoading(ctx, `Fixing...`);
+            const loadingMessage = yield this.replyLoadingState(ctxAdaptor, `Fixing...`);
             const mistakesResp = yield this.openAi.chat([{
                     content: `Fix the sentence mistakes: ${text}`,
                     role: api_1.ChatCompletionRequestMessageRoleEnum.User,
                 }]);
             const fixedText = mistakesResp.data.choices.map(choice => { var _a; return (_a = choice === null || choice === void 0 ? void 0 : choice.message) === null || _a === void 0 ? void 0 : _a.content; }).join(" | ");
-            yield this.editLoadingReply(ctx, loadingMessage, `[Fixed message]: ${fixedText}`);
+            yield this.editLoadingReply(ctxAdaptor, loadingMessage, `[Fixed message]: ${fixedText}`);
         });
     }
-    replyLoading(ctx, message) {
+    replyLoadingState(ctxAdaptor, message) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield this.reply(ctxAdaptor, message);
+        });
+    }
+    reply(ctxAdaptor, message) {
         return __awaiter(this, void 0, void 0, function* () {
             // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
-            return yield ctx.reply(message, this.getReplyArgs(ctx));
+            return yield ctxAdaptor.ctx.reply(message, this.getReplyArgs(ctxAdaptor));
         });
     }
-    editLoadingReply(ctx, message, text) {
+    editLoadingReply(ctxAdaptor, editMessageObj, text) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield ctx.telegram.editMessageText(message.chat.id, message.message_id, undefined, text);
+            yield ctxAdaptor.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text);
+        });
+    }
+    deleteMessage(ctxAdaptor, messageId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield ctxAdaptor.ctx.deleteMessage(messageId);
         });
     }
     escape(text) {
@@ -186,69 +223,57 @@ If you want to reset the conversation, type /reset
         }, text);
     }
     deleteFile(filePath) {
-        fs.unlink(filePath, (err) => {
-            if (err) {
-                throw err;
-            }
-        });
+        file_system_1.AppFileSystem.deleteFileOrDir(filePath);
     }
     // private async onText(ctx: FilteredContext<MyContext, Extract<Update, 'Update.MessageUpdate'>>) {
-    onText(ctx) {
+    onText(ctxAdaptor) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.chat(ctx, ctx.update.message.text);
+            yield this.chat(ctxAdaptor, ctxAdaptor.getText());
         });
     }
-    chat(ctx, userMessage) {
-        var _a, _b, _c;
+    chat(ctxAdaptor, userMessage) {
+        var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
-            const loadingMessage = yield this.replyLoading(ctx, `Loading...`);
-            const sessionMessages = this.session.getMessages(ctx);
+            const loadingMessage = yield this.replyLoadingState(ctxAdaptor, `Loading...`);
+            const sessionMessages = this.session.getMessages(ctxAdaptor);
             sessionMessages.push({
                 content: userMessage,
                 role: api_1.ChatCompletionRequestMessageRoleEnum.User,
             });
+            let text = '';
             try {
                 const response = yield this.openAi.chat(sessionMessages);
-                const text = response.data.choices.map(choice => { var _a; return (_a = choice === null || choice === void 0 ? void 0 : choice.message) === null || _a === void 0 ? void 0 : _a.content; }).join(" | ");
+                text = response.data.choices.map(choice => { var _a; return (_a = choice === null || choice === void 0 ? void 0 : choice.message) === null || _a === void 0 ? void 0 : _a.content; }).join(" | ");
                 sessionMessages.push({
                     content: text,
                     role: api_1.ChatCompletionRequestMessageRoleEnum.Assistant,
                 });
-                this.session.updateMessages(ctx, sessionMessages);
-                yield this.editLoadingReply(ctx, loadingMessage, text);
+                this.session.updateMessages(ctxAdaptor, sessionMessages);
+                yield this.editLoadingReply(ctxAdaptor, loadingMessage, text);
+            }
+            catch (error) {
+                (0, log_utils_1.logError)(error);
+                const text = `[ERROR:ChatGPT]: ${((_c = (_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) || ((_d = error.response) === null || _d === void 0 ? void 0 : _d.description) || error.response}`;
+                yield this.editLoadingReply(ctxAdaptor, loadingMessage, text);
+            }
+            try {
                 const convertedFilePath = yield this.tts.convert(text);
                 if (convertedFilePath) {
-                    yield this.sendAudio(ctx, convertedFilePath, text);
+                    yield this.sendAudio(ctxAdaptor, convertedFilePath, text);
                     this.deleteFile(convertedFilePath);
                 }
             }
             catch (error) {
-                console.error(error);
-                const text = `[ERROR:ChatGPT]: ${((_c = (_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) || error.response.description}`;
-                yield this.editLoadingReply(ctx, loadingMessage, text);
+                (0, log_utils_1.log)(error);
+                yield this.reply(ctxAdaptor, `[Text To Speech Error]: ${error}`);
             }
         });
     }
-    sendAudio(ctx, filePath, text) {
+    sendAudio(ctxAdaptor, filePath, text) {
         return __awaiter(this, void 0, void 0, function* () {
             const readStream = fs.createReadStream(filePath);
-            yield ctx.sendAudio({ source: readStream, filename: this.cutAudioName(text) }, this.getReplyArgs(ctx));
+            yield ctxAdaptor.ctx.sendAudio({ source: readStream, filename: (0, sanitize_filename_ts_1.sanitize)(text) }, this.getReplyArgs(ctxAdaptor));
         });
-    }
-    cutAudioName(text) {
-        if (this.isFileNameValid(text)) {
-            return text.slice(0, 64);
-        }
-        return 'invalid name';
-    }
-    isFileNameValid(fileName) {
-        // https://stackoverflow.com/a/11101624
-        const rg1 = /^[^\\/:\*\?"<>\|]+$/; // forbidden characters \ / : * ? " < > |
-        const rg2 = /^\./; // cannot start with dot (.)
-        const rg3 = /^(nul|prn|con|lpt[0-9]|com[0-9])(\.|$)/i; // forbidden file names
-        return function isValid(fname) {
-            return rg1.test(fname) && !rg2.test(fname) && !rg3.test(fname);
-        };
     }
 }
 exports.TelegramBotMessageHandler = TelegramBotMessageHandler;

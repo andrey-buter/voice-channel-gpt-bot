@@ -17,6 +17,7 @@ const client_polly_1 = require("@aws-sdk/client-polly");
 const fs_1 = __importDefault(require("fs"));
 const stream_1 = require("stream");
 const env_1 = require("./env");
+const log_utils_1 = require("./utils/log.utils");
 // https://www.youtube.com/watch?v=FxPgWOJ7MWc
 // https://github.com/aws/aws-sdk-js-v3/tree/main/clients/client-polly
 // https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/loading-node-credentials-shared.html
@@ -33,7 +34,7 @@ class TextToSpeechEngine {
     }
     convert(text) {
         return __awaiter(this, void 0, void 0, function* () {
-            const command = new client_polly_1.SynthesizeSpeechCommand(Object.assign(Object.assign({}, this.params), { Text: text }));
+            const command = new client_polly_1.SynthesizeSpeechCommand(Object.assign(Object.assign({}, this.params), { Text: text.replaceAll('"', '\"') }));
             const filePath = `${this.mediaDir}/polly-${this.currentFileId++}.mp3`;
             try {
                 const data = yield this.client.send(command);
@@ -56,10 +57,10 @@ class TextToSpeechEngine {
             catch (error) {
                 if (error.$$metadata.requestId) {
                     const { requestId, cfId, extendedRequestId } = error.$$metadata;
-                    console.log({ requestId, cfId, extendedRequestId });
+                    (0, log_utils_1.log)({ requestId, cfId, extendedRequestId });
                 }
                 else {
-                    console.log(error);
+                    (0, log_utils_1.log)(error);
                 }
             }
         });
