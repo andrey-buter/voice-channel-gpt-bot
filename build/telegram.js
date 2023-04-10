@@ -120,6 +120,7 @@ If you want to reset the conversation, type /reset
     }
     doForAllowedUserOrAction(ctxAdaptor, cb) {
         return __awaiter(this, void 0, void 0, function* () {
+            // log(await ctxAdaptor.ctx.chat);
             // console.log(ctxAdaptor.ctx.update)
             if (!this.isAllowed(ctxAdaptor)) {
                 yield this.reply(ctxAdaptor, this.restrictedMessage);

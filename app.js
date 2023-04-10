@@ -1,4 +1,7 @@
 "use strict";
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
+
 Object.defineProperty(exports, "__esModule", { value: true });
 
 // https://stackoverflow.com/questions/8313628/node-js-request-how-to-emitter-setmaxlisteners

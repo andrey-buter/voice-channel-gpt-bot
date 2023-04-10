@@ -103,6 +103,7 @@ If you want to reset the conversation, type /reset
     }
 
     private async doForAllowedUserOrAction(ctxAdaptor: AppContextAdaptor, cb: (ctx: AppContextAdaptor) => void) {
+        // log(await ctxAdaptor.ctx.chat);
         // console.log(ctxAdaptor.ctx.update)
         if (!this.isAllowed(ctxAdaptor)) {
             await this.reply(ctxAdaptor, this.restrictedMessage);
