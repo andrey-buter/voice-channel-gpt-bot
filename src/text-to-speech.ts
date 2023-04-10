@@ -2,6 +2,7 @@ import { PollyClient, SynthesizeSpeechCommand, SynthesizeSpeechCommandInput } fr
 import fs from 'fs';
 import { Stream } from 'stream';
 import { ENV_VARS } from './env';
+import { log } from './utils/log.utils';
 
 // https://www.youtube.com/watch?v=FxPgWOJ7MWc
 // https://github.com/aws/aws-sdk-js-v3/tree/main/clients/client-polly
@@ -52,9 +53,9 @@ export class TextToSpeechEngine {
 		catch (error) {
 			if (error.$$metadata.requestId) {
 				const { requestId, cfId, extendedRequestId } = error.$$metadata;
-				console.log({ requestId, cfId, extendedRequestId });
+				log({ requestId, cfId, extendedRequestId });
 			} else {
-				console.log(error);
+				log(error);
 			}
 		}
 

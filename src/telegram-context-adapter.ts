@@ -1,4 +1,4 @@
-import { AppContext } from './telegram.types';
+import { AppContext } from './types/telegram.types';
 
 export class AppTelegramContextAdapter {
 	constructor(public ctx: AppContext) {
@@ -34,6 +34,10 @@ export class AppTelegramContextAdapter {
 
 	getVoiceFileId() {
 		return this.ctx.update.message.voice.file_id;
+	}
+
+	getMessageId() {
+		return this.ctx.update.message.message_id;
 	}
 }
 

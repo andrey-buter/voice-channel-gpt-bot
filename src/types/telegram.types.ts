@@ -1,6 +1,6 @@
 import { ChatCompletionRequestMessage } from 'openai/api';
 import { Context } from 'telegraf';
-import { SessionData } from './telegram-session';
+import { SessionData } from '../telegram-session';
 
 export type SessionMessage = ChatCompletionRequestMessage;
 
@@ -27,3 +27,7 @@ export interface TelegramReplyMessage {
 	date: number;
 	text: string;
 }
+
+export type ThreadFileType = 'history' | 'config';;
+
+export type ThreadConfig = Record<string, any>;

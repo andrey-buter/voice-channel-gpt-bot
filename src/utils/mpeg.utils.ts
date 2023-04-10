@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { log } from './log.utils';
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path
 const ffmpeg = require('fluent-ffmpeg')
 
@@ -13,11 +14,11 @@ export function convertOggToMp3(oggFilePath: string, mp3filePath: string, onSucc
 		.input(oggFilePath)
 		.audioQuality(96)
 		.toFormat("mp3")
-		.on('error', error => console.log(`Encoding Error: ${error.message}`))
-		.on('exit', () => console.log('Audio recorder exited'))
-		.on('close', () => console.log('Audio recorder closed'))
+		.on('error', error => log(`Encoding Error: ${error.message}`))
+		.on('exit', () => log('Audio recorder exited'))
+		.on('close', () => log('Audio recorder closed'))
 		.on('end', async () => {
-			console.log('Audio Transcoding succeeded !');
+			log('Audio Transcoding succeeded !');
 
 			await onSuccess();
 		})

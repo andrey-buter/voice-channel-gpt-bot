@@ -2,6 +2,9 @@ import fs from 'fs';
 import { ensureFileSync, removeSync, writeJsonSync, readJsonSync } from 'fs-extra';
 
 export class AppFileSystem {
+	static createFileOrDir(path: string) {
+		ensureFileSync(path);
+	}
 	static deleteFileOrDir(path: string) {
 		removeSync(path);
 	}
@@ -17,7 +20,7 @@ export class AppFileSystem {
 	}
 
 	static readJson<T = unknown>(path: string) {
-		ensureFileSync(path);
+		this.createFileOrDir(path);
 		const data = this.readFile(path);
 
 		if (!data) {
@@ -29,7 +32,7 @@ export class AppFileSystem {
 	}
 
 	static readFile(path: string) {
-		ensureFileSync(path);
+		this.createFileOrDir(path);
 		return fs.readFileSync(path, {
 			encoding: 'utf-8'
 		});
