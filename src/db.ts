@@ -14,56 +14,55 @@ import { log } from './utils/log.utils';
 export class AppDb {
 	private static readonly dir = 'db';
 
-	static writeThreadFile<T>(type: ThreadFileType, userId: number, threadId: MessageSessionId, data: T) {
-		const path = this.getThreadFilePath(type, userId, threadId);
+	static writeThreadFile<T>(type: ThreadFileType, chatId: number, threadId: MessageSessionId, data: T) {
+		const path = this.getThreadFilePath(type, chatId, threadId);
 		log(path)
 
 		AppFileSystem.writeJson(path, data);
 	}
 
-	static writeThreadConfig(userId: number, threadId: MessageSessionId, config: ThreadConfig) {
-		this.writeThreadFile('config', userId, threadId, config);
+	static writeThreadConfig(chatId: number, threadId: MessageSessionId, config: ThreadConfig) {
+		this.writeThreadFile('config', chatId, threadId, config);
 	}
 
-	static writeThreadHistory(userId: number, threadId: MessageSessionId, messages: SessionMessage[]) {
-		this.writeThreadFile('history', userId, threadId, messages);
+	static writeThreadHistory(chatId: number, threadId: MessageSessionId, messages: SessionMessage[]) {
+		this.writeThreadFile('history', chatId, threadId, messages);
 	}
 
-	static deleteThreadHistory(userId: number, threadId: MessageSessionId) {
-		this.deleteThreadFile('history', userId, threadId);
+	static deleteThreadHistory(chatId: number, threadId: MessageSessionId) {
+		this.deleteThreadFile('history', chatId, threadId);
 	}
 
-	static deleteThreadConfig(userId: number, threadId: MessageSessionId) {
-		this.deleteThreadFile('config', userId, threadId);
+	static deleteThreadConfig(chatId: number, threadId: MessageSessionId) {
+		this.deleteThreadFile('config', chatId, threadId);
 	}
 
-	static deleteThreadFile(type: ThreadFileType, userId: number, threadId: MessageSessionId) {
-		const path = this.getThreadFilePath(type, userId, threadId);
+	static deleteThreadFile(type: ThreadFileType, chatId: number, threadId: MessageSessionId) {
+		const path = this.getThreadFilePath(type, chatId, threadId);
 
 		AppFileSystem.deleteFileOrDir(path);
 	}
 
-	static deleteThread(userId: number, threadId: MessageSessionId) {
-		this.deleteThreadHistory(userId, threadId);
-		this.deleteThreadConfig(userId, threadId);
+	static deleteThread(chatId: number, threadId: MessageSessionId) {
+		this.deleteThreadHistory(chatId, threadId);
+		this.deleteThreadConfig(chatId, threadId);
 	}
 
-	private static getThreadFilePath(type: ThreadFileType, userId: number, threadId: MessageSessionId) {
-		// return `${this.dir}/${userId}/thread-${threadId}/${type}.json`;
-		return `${this.dir}/${userId}/thread-${threadId}/${type}.json`;
+	private static getThreadFilePath(type: ThreadFileType, chatId: number, threadId: MessageSessionId) {
+		return `${this.dir}/${chatId}/thread-${threadId}/${type}.json`;
 	}
 
-	static readThreadFile<T>(type: ThreadFileType, userId: number, threadId: MessageSessionId) {
-		const path = this.getThreadFilePath(type, userId, threadId);
+	static readThreadFile<T>(type: ThreadFileType, chatId: number, threadId: MessageSessionId) {
+		const path = this.getThreadFilePath(type, chatId, threadId);
 		log(path)
 		return AppFileSystem.readJson<T>(path);
 	}
 
-	static readThreadHistory(userId: number, threadId: MessageSessionId) {
-		return this.readThreadFile<SessionMessage[]>('history', userId, threadId);
+	static readThreadHistory(chatId: number, threadId: MessageSessionId) {
+		return this.readThreadFile<SessionMessage[]>('history', chatId, threadId);
 	}
 
-	static readThreadConfig(userId: number, threadId: MessageSessionId) {
-		return this.readThreadFile<ThreadConfig>('config', userId, threadId);
+	static readThreadConfig(chatId: number, threadId: MessageSessionId) {
+		return this.readThreadFile<ThreadConfig>('config', chatId, threadId);
 	}
 }

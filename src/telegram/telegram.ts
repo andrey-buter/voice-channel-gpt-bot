@@ -99,9 +99,6 @@ If you want to reset the conversation, type /reset
       await ctx.answerCbQuery(`Saved`);
 
       if (actionNamespace === ActionNamespaces.speechToText) {
-        log('------------- ACTION ----------------');
-        log(ctx.update.callback_query)
-        // log(ctxDecorator.adapter.getMessageObj());
         ctxDecorator.session.updateThreadConfig({
           speechToText: actionName as SpeechToTextAction,
         });
@@ -110,7 +107,6 @@ If you want to reset the conversation, type /reset
       }
 
       if (actionNamespace === ActionNamespaces.textToSpeech) {
-        // log(ctxDecorator.adapter.getMessageObj());
         ctxDecorator.session.updateThreadConfig({
           textToSpeech: actionName as TextToSpeechAction,
         });
@@ -128,8 +124,6 @@ If you want to reset the conversation, type /reset
   }
 
   private async doForAllowedUserOrAction(ctxDecorator: AppContextDecorator, cb: (ctx: AppContextDecorator) => void) {
-    // log(ctxDecorator.adapter.getMessageObj());
-    // console.log(ctxDecorator.ctx.update)
     if (!this.isAllowed(ctxDecorator)) {
       await this.reply(ctxDecorator, this.restrictedMessage);
       return;
@@ -145,7 +139,7 @@ If you want to reset the conversation, type /reset
   }
 
   private async sendFirstThreadMessage(ctxDecorator: AppContextDecorator) {
-    return await ctxDecorator.sendSpeechToTextQuestion();
+    return await ctxDecorator.sendTextToSpeechQuestion();
   }
 
   private isAllowed(ctxDecorator: AppContextDecorator) {
@@ -181,7 +175,7 @@ If you want to reset the conversation, type /reset
       const stream = fs.createReadStream(mp3filePath);
       try {
         // @ts-ignore
-        const response = await this.openAi.transcript(stream, config.speechToText);
+        const response = await this.openAi.transcript(stream);
         const text = response.data?.text || '';
 
         await this.editLoadingReply(ctxDecorator, loadingMessage, `[Voice message]: ${text}`);
@@ -246,9 +240,6 @@ If you want to reset the conversation, type /reset
     const loadingMessage = await this.replyLoadingState(ctxDecorator, `Loading...`);
     const sessionMessages = ctxDecorator.session.getMessages();
     const config = ctxDecorator.session.getThreadConfig();
-
-    log('------------- CHAT ----------------');
-    log(ctxDecorator.ctx.update);
 
     sessionMessages.push({
       content: userMessage,

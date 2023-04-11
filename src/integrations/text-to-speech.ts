@@ -24,7 +24,7 @@ export class TextToSpeechEngine {
 
   private readonly params: SynthesizeSpeechCommandInput = {
     Text: '',
-    OutputFormat: OutputFormat['mp3'],
+    OutputFormat: OutputFormat['MP3'],
     VoiceId: VoiceId['Matthew'],
     LanguageCode: LanguageCode['en_US'], // optional
   };
@@ -50,7 +50,7 @@ export class TextToSpeechEngine {
 
     const command = new SynthesizeSpeechCommand({
       ...this.params,
-      Text: text.replaceAll('"', '"'),
+      Text: text.replaceAll('"', '\"'),
       LanguageCode: languageCode,
       VoiceId: voiceId,
     });
@@ -80,7 +80,7 @@ export class TextToSpeechEngine {
 
       return result;
     } catch (error) {
-      if (error.$$metadata.requestId) {
+      if (error.$$metadata?.requestId) {
         const { requestId, cfId, extendedRequestId } = error.$$metadata;
         log({ requestId, cfId, extendedRequestId });
       } else {

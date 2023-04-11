@@ -19,7 +19,7 @@ export class TelegramSession {
   public updateMessages(allMessages: SessionMessage[]) {
     const replyMessageId = this.getSessionMessagesByReplyId();
     const session = this.contextAdapter.getSession();
-    const userId = this.contextAdapter.getUserId();
+    const chatId = this.contextAdapter.getChatId();
 
     if (!session[replyMessageId]) {
       session[replyMessageId] = {};
@@ -28,16 +28,16 @@ export class TelegramSession {
     session[replyMessageId].messages = allMessages;
 
     if (allMessages.length) {
-      AppDb.writeThreadHistory(userId, replyMessageId, allMessages);
+      AppDb.writeThreadHistory(chatId, replyMessageId, allMessages);
     } else {
-      AppDb.deleteThreadHistory(userId, replyMessageId);
+      AppDb.deleteThreadHistory(chatId, replyMessageId);
     }
   }
 
   public updateThreadConfig(newConfig: Partial<ThreadConfig>) {
     const replyMessageId = this.getSessionMessagesByReplyId();
     const session = this.contextAdapter.getSession();
-    const userId = this.contextAdapter.getUserId();
+    const chatId = this.contextAdapter.getChatId();
 
     if (!session[replyMessageId]) {
       session[replyMessageId] = {};
@@ -50,16 +50,16 @@ export class TelegramSession {
       ...newConfig,
     };
 
-    AppDb.writeThreadConfig(userId, replyMessageId, session[replyMessageId].threadConfig);
+    AppDb.writeThreadConfig(chatId, replyMessageId, session[replyMessageId].threadConfig);
   }
 
   public getMessages() {
     const replyMessageId = this.getSessionMessagesByReplyId();
-    const userId = this.contextAdapter.getUserId();
+    const chatId = this.contextAdapter.getChatId();
     let history = this.contextAdapter.getSession()?.[replyMessageId]?.messages;
 
     if (!history) {
-      history = AppDb.readThreadHistory(userId, replyMessageId);
+      history = AppDb.readThreadHistory(chatId, replyMessageId);
     }
 
     return [...(history || [])];
@@ -67,18 +67,12 @@ export class TelegramSession {
 
   public getThreadConfig() {
     const replyMessageId = this.getSessionMessagesByReplyId();
-    const userId = this.contextAdapter.getUserId();
+    const chatId = this.contextAdapter.getChatId();
     let config = this.contextAdapter.getSession()?.[replyMessageId]?.threadConfig;
 
-    log(this.contextAdapter.getSession())
-    log(userId)
-    log(replyMessageId)
-
     if (!config) {
-      config = AppDb.readThreadConfig(userId, replyMessageId);
+      config = AppDb.readThreadConfig(chatId, replyMessageId);
     }
-
-    log(config);
 
     return { ...(config || {}) } as ThreadConfig;
   }
