@@ -1,11 +1,22 @@
-import { AppFileSystem } from './file-system';
+import { AppFileSystem } from './utils/file-system';
 import { MessageSessionId, SessionMessage, ThreadConfig, ThreadFileType } from './types/telegram.types';
+import { log } from './utils/log.utils';
 
+/**
+ * Thread data:
+ * первоначально планировал делать путь к файлам db/{userId}/{threadId}/{fileName}.json
+ * Но т.к. в трэде первым пишет сообщение с кнопками бот, чтобы сохранить конфиг,
+ * то конфиг записывался под id бота, а не юзера. И юзер к информации бота доступа не имеет.
+ * Потому принято решение НЕ использовать userId и завязываться только на thread id
+ * с ограничением, что всегда есть только 2 участника бот и юзер.
+ * Если вдруг появится 3й участник, то все настройки унаследуются/будут доступны и ему.
+ */
 export class AppDb {
 	private static readonly dir = 'db';
 
 	static writeThreadFile<T>(type: ThreadFileType, userId: number, threadId: MessageSessionId, data: T) {
 		const path = this.getThreadFilePath(type, userId, threadId);
+		log(path)
 
 		AppFileSystem.writeJson(path, data);
 	}
@@ -38,11 +49,13 @@ export class AppDb {
 	}
 
 	private static getThreadFilePath(type: ThreadFileType, userId: number, threadId: MessageSessionId) {
+		// return `${this.dir}/${userId}/thread-${threadId}/${type}.json`;
 		return `${this.dir}/${userId}/thread-${threadId}/${type}.json`;
 	}
 
 	static readThreadFile<T>(type: ThreadFileType, userId: number, threadId: MessageSessionId) {
 		const path = this.getThreadFilePath(type, userId, threadId);
+		log(path)
 		return AppFileSystem.readJson<T>(path);
 	}
 
