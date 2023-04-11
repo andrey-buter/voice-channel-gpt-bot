@@ -41,18 +41,12 @@ export type SessionData = Record<MessageSessionId, {
 }>;
 
 export interface ThreadConfig {
-  speechToText: SpeechToTextAction;
   textToSpeech: TextToSpeechAction;
 }
 
 export enum ActionNamespaces {
   speechToText = 'speechToText',
   textToSpeech = 'textToSpeech',
-}
-
-export enum SpeechToTextAction {
-  en = 'en',
-  ru = 'ru',
 }
 
 export enum AppLabels {

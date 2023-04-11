@@ -13,12 +13,7 @@ import { ENV_VARS } from '../env';
 import { log, logError } from '../utils/log.utils';
 import { convertOggToMp3, initConverter } from '../utils/mpeg.utils';
 import { AppTelegramContextDecorator } from './telegram-context-decorator';
-import {
-  ActionNamespaces,
-  AppContext,
-  SpeechToTextAction,
-  TelegramReplyMessage, TextToSpeechAction,
-} from '../types/telegram.types';
+import { ActionNamespaces, AppContext, TelegramReplyMessage, TextToSpeechAction } from '../types/telegram.types';
 import { TextToSpeechEngine } from '../integrations/text-to-speech';
 
 const download = require('download');
@@ -47,7 +42,6 @@ If you want to reset the conversation, type /reset
   // `;
 
   private readonly mediaDir = ENV_VARS.TMP_MEDIA_DIR;
-
 
   constructor() {
     // AppFileSystem.createFileOrDir(this.mediaDir);
@@ -97,14 +91,6 @@ If you want to reset the conversation, type /reset
       const ctxDecorator = new AppTelegramContextDecorator(ctx as unknown as AppContext);
 
       await ctx.answerCbQuery(`Saved`);
-
-      if (actionNamespace === ActionNamespaces.speechToText) {
-        ctxDecorator.session.updateThreadConfig({
-          speechToText: actionName as SpeechToTextAction,
-        });
-
-        await ctxDecorator.sendTextToSpeechQuestion();
-      }
 
       if (actionNamespace === ActionNamespaces.textToSpeech) {
         ctxDecorator.session.updateThreadConfig({
@@ -219,7 +205,11 @@ If you want to reset the conversation, type /reset
     return (await ctxDecorator.ctx.reply(message, this.getReplyArgs(ctxDecorator))) as any as TelegramReplyMessage;
   }
 
-  private async editLoadingReply(ctxDecorator: AppContextDecorator, editMessageObj: TelegramReplyMessage, text: string) {
+  private async editLoadingReply(
+    ctxDecorator: AppContextDecorator,
+    editMessageObj: TelegramReplyMessage,
+    text: string,
+  ) {
     await ctxDecorator.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text);
   }
 

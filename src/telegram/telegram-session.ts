@@ -1,20 +1,12 @@
 import { AppDb } from '../db';
-import {
-  MessageSessionId,
-  SessionMessage,
-  SpeechToTextAction,
-  TextToSpeechAction,
-  ThreadConfig,
-} from '../types/telegram.types';
+import { MessageSessionId, SessionMessage, TextToSpeechAction, ThreadConfig } from '../types/telegram.types';
 import { log } from '../utils/log.utils';
 import { AppTelegramContextAdapter } from './telegram-context-adapter';
-
 
 export class TelegramSession {
   private readonly defaultId = 'direct-chat';
 
-  constructor(private contextAdapter: AppTelegramContextAdapter) {
-  }
+  constructor(private contextAdapter: AppTelegramContextAdapter) {}
 
   public updateMessages(allMessages: SessionMessage[]) {
     const replyMessageId = this.getSessionMessagesByReplyId();
@@ -44,7 +36,6 @@ export class TelegramSession {
     }
 
     session[replyMessageId].threadConfig = {
-      speechToText: SpeechToTextAction.en,
       textToSpeech: TextToSpeechAction.noVoice,
       ...(session[replyMessageId].threadConfig || {}),
       ...newConfig,

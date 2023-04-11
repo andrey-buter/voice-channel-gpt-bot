@@ -16,7 +16,6 @@ export class AppDb {
 
 	static writeThreadFile<T>(type: ThreadFileType, chatId: number, threadId: MessageSessionId, data: T) {
 		const path = this.getThreadFilePath(type, chatId, threadId);
-		log(path)
 
 		AppFileSystem.writeJson(path, data);
 	}
@@ -54,7 +53,6 @@ export class AppDb {
 
 	static readThreadFile<T>(type: ThreadFileType, chatId: number, threadId: MessageSessionId) {
 		const path = this.getThreadFilePath(type, chatId, threadId);
-		log(path)
 		return AppFileSystem.readJson<T>(path);
 	}
 
