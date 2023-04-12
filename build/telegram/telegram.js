@@ -72,18 +72,23 @@ If you want to reset the conversation, type /reset
         // `;
         this.mediaDir = env_1.ENV_VARS.TMP_MEDIA_DIR;
         this.bot.use((0, telegraf_1.session)());
+        // this.bot.use(async (ctx, next) => {
+        //   await next();
+        // });
         // this.bot.use(Telegraf.log());
         this.bot.settings((ctx) => __awaiter(this, void 0, void 0, function* () {
-            yield ctx.telegram.setMyCommands([
-                {
-                    command: '/teach',
-                    description: 'Start conversation',
-                },
-                {
-                    command: '/reset',
-                    description: 'Reset session',
-                },
-            ]);
+            yield ctx.telegram.callApi('setMyCommands', {
+                commands: [
+                    {
+                        command: '/teach',
+                        description: 'Start conversation',
+                    },
+                    {
+                        command: '/reset',
+                        description: 'Reset session',
+                    },
+                ],
+            });
         }));
         this.bot.start((ctx) => __awaiter(this, void 0, void 0, function* () {
             const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
