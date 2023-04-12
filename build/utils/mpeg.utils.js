@@ -26,12 +26,12 @@ function convertOggToMp3(oggFilePath, mp3filePath, onSuccess) {
     ffmpeg()
         .input(oggFilePath)
         .audioQuality(96)
-        .toFormat("mp3")
+        .toFormat('mp3')
         .on('error', error => (0, log_utils_1.log)(`Encoding Error: ${error.message}`))
         .on('exit', () => (0, log_utils_1.log)('Audio recorder exited'))
         .on('close', () => (0, log_utils_1.log)('Audio recorder closed'))
         .on('end', () => __awaiter(this, void 0, void 0, function* () {
-        (0, log_utils_1.log)('Audio Transcoding succeeded !');
+        // log('Audio Transcoding succeeded !');
         yield onSuccess();
     }))
         .pipe(outStream, { end: true });

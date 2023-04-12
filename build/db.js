@@ -1,44 +1,53 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppDb = void 0;
-const file_system_1 = require("./file-system");
+const file_system_1 = require("./utils/file-system");
+/**
+ * Thread data:
+ * первоначально планировал делать путь к файлам db/{userId}/{threadId}/{fileName}.json
+ * Но т.к. в трэде первым пишет сообщение с кнопками бот, чтобы сохранить конфиг,
+ * то конфиг записывался под id бота, а не юзера. И юзер к информации бота доступа не имеет.
+ * Потому принято решение НЕ использовать userId и завязываться только на thread id
+ * с ограничением, что всегда есть только 2 участника бот и юзер.
+ * Если вдруг появится 3й участник, то все настройки унаследуются/будут доступны и ему.
+ */
 class AppDb {
-    static writeThreadFile(type, userId, threadId, data) {
-        const path = this.getThreadFilePath(type, userId, threadId);
+    static writeThreadFile(type, chatId, threadId, data) {
+        const path = this.getThreadFilePath(type, chatId, threadId);
         file_system_1.AppFileSystem.writeJson(path, data);
     }
-    static writeThreadConfig(userId, threadId, config) {
-        this.writeThreadFile('config', userId, threadId, config);
+    static writeThreadConfig(chatId, threadId, config) {
+        this.writeThreadFile('config', chatId, threadId, config);
     }
-    static writeThreadHistory(userId, threadId, messages) {
-        this.writeThreadFile('history', userId, threadId, messages);
+    static writeThreadHistory(chatId, threadId, messages) {
+        this.writeThreadFile('history', chatId, threadId, messages);
     }
-    static deleteThreadHistory(userId, threadId) {
-        this.deleteThreadFile('history', userId, threadId);
+    static deleteThreadHistory(chatId, threadId) {
+        this.deleteThreadFile('history', chatId, threadId);
     }
-    static deleteThreadConfig(userId, threadId) {
-        this.deleteThreadFile('config', userId, threadId);
+    static deleteThreadConfig(chatId, threadId) {
+        this.deleteThreadFile('config', chatId, threadId);
     }
-    static deleteThreadFile(type, userId, threadId) {
-        const path = this.getThreadFilePath(type, userId, threadId);
+    static deleteThreadFile(type, chatId, threadId) {
+        const path = this.getThreadFilePath(type, chatId, threadId);
         file_system_1.AppFileSystem.deleteFileOrDir(path);
     }
-    static deleteThread(userId, threadId) {
-        this.deleteThreadHistory(userId, threadId);
-        this.deleteThreadConfig(userId, threadId);
+    static deleteThread(chatId, threadId) {
+        this.deleteThreadHistory(chatId, threadId);
+        this.deleteThreadConfig(chatId, threadId);
     }
-    static getThreadFilePath(type, userId, threadId) {
-        return `${this.dir}/${userId}/thread-${threadId}/${type}.json`;
+    static getThreadFilePath(type, chatId, threadId) {
+        return `${this.dir}/${chatId}/thread-${threadId}/${type}.json`;
     }
-    static readThreadFile(type, userId, threadId) {
-        const path = this.getThreadFilePath(type, userId, threadId);
+    static readThreadFile(type, chatId, threadId) {
+        const path = this.getThreadFilePath(type, chatId, threadId);
         return file_system_1.AppFileSystem.readJson(path);
     }
-    static readThreadHistory(userId, threadId) {
-        return this.readThreadFile('history', userId, threadId);
+    static readThreadHistory(chatId, threadId) {
+        return this.readThreadFile('history', chatId, threadId);
     }
-    static readThreadConfig(userId, threadId) {
-        return this.readThreadFile('config', userId, threadId);
+    static readThreadConfig(chatId, threadId) {
+        return this.readThreadFile('config', chatId, threadId);
     }
 }
 AppDb.dir = 'db';
