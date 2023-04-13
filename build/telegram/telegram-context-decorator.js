@@ -38,6 +38,9 @@ class AppTelegramContextDecorator {
     getText() {
         return this.adapter.getText();
     }
+    isMainChatMessage() {
+        return this.adapter.isMainChatMessage();
+    }
     // callback answer имеет таймаут и не живет вечно. Потому кнопки нельзя переназначать через какое-то время.
     sendTextToSpeechQuestion() {
         return __awaiter(this, void 0, void 0, function* () {

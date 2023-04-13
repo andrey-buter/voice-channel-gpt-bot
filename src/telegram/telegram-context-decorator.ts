@@ -37,6 +37,10 @@ export class AppTelegramContextDecorator {
     return this.adapter.getText();
   }
 
+  isMainChatMessage() {
+    return this.adapter.isMainChatMessage();
+  }
+
   // callback answer имеет таймаут и не живет вечно. Потому кнопки нельзя переназначать через какое-то время.
   async sendTextToSpeechQuestion() {
     const actionNamespace = ActionNamespaces.textToSpeech;

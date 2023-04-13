@@ -85,7 +85,7 @@ If you want to reset the conversation, type /reset
       }
 
       // for main channel messages stream (i.e. for thread): don't react on a new post
-      if (ctxDecorator.getForwardFromChatId()) {
+      if (ctxDecorator.isMainChatMessage()) {
         this.saveThreadTextToConfig(ctxDecorator);
         return;
       }
@@ -134,7 +134,7 @@ If you want to reset the conversation, type /reset
     }
 
     // for main channel messages stream (i.e. for thread): don't react on a new post
-    if (ctxDecorator.getForwardFromChatId()) {
+    if (ctxDecorator.isMainChatMessage()) {
       await this.sendFirstThreadMessage(ctxDecorator);
       return;
     }
@@ -143,7 +143,6 @@ If you want to reset the conversation, type /reset
   }
 
   private saveThreadTextToConfig(ctxDecorator: AppContextDecorator) {
-    log(ctxDecorator.adapter.getText())
     ctxDecorator.session.updateThreadConfig({
       threatName: ctxDecorator.adapter.getText(),
     });

@@ -48,14 +48,18 @@ class AppTelegramContextAdapter {
         const message = this.getMessageObj();
         return message === null || message === void 0 ? void 0 : message.chat.id;
     }
+    isMainChatMessage() {
+        return !!this.getForwardFromChatId();
+    }
     getThreadMessageId() {
         const message = this.getMessageObj();
         if (message.message_thread_id) {
             return message.message_thread_id;
         }
-        if (this.ctx.update.edited_message) {
-            return this.ctx.update.edited_message.message_id;
+        if (this.isMainChatMessage()) {
+            return message.message_id;
         }
+        // непосредственный чат между юзером и ботом не имеет forward_from_chat объект
         return null;
     }
 }
