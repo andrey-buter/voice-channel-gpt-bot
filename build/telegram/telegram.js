@@ -137,6 +137,7 @@ If you want to reset the conversation, type /reset
                 yield this.reply(ctxDecorator, this.restrictedMessage);
                 return;
             }
+            (0, log_utils_1.log)('getForwardFromChatId', ctxDecorator.getForwardFromChatId());
             // for main channel messages stream: don't react on a new post
             if (ctxDecorator.getForwardFromChatId()) {
                 yield this.sendFirstThreadMessage(ctxDecorator);
@@ -147,6 +148,7 @@ If you want to reset the conversation, type /reset
     }
     sendFirstThreadMessage(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
+            (0, log_utils_1.log)('sendFirstThreadMessage', 'First message sent');
             return yield ctxDecorator.sendTextToSpeechQuestion();
         });
     }

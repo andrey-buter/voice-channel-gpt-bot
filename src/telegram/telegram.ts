@@ -120,6 +120,8 @@ If you want to reset the conversation, type /reset
       return;
     }
 
+    log('getForwardFromChatId', ctxDecorator.getForwardFromChatId())
+
     // for main channel messages stream: don't react on a new post
     if (ctxDecorator.getForwardFromChatId()) {
       await this.sendFirstThreadMessage(ctxDecorator);
@@ -130,6 +132,7 @@ If you want to reset the conversation, type /reset
   }
 
   private async sendFirstThreadMessage(ctxDecorator: AppContextDecorator) {
+    log('sendFirstThreadMessage', 'First message sent')
     return await ctxDecorator.sendTextToSpeechQuestion();
   }
 
