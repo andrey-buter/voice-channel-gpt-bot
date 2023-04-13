@@ -15,15 +15,16 @@ class AppTelegramContextAdapter {
         return this.ctx.session;
     }
     getText() {
-        return this.ctx.update.message.text;
+        const message = this.getMessageObj();
+        return (message === null || message === void 0 ? void 0 : message.text) || '';
     }
     getUserId() {
         const message = this.getMessageObj();
         return message.from.id;
     }
     getForwardFromChatId() {
-        var _a;
-        return (_a = this.ctx.update.message) === null || _a === void 0 ? void 0 : _a.forward_from_chat;
+        const message = this.getMessageObj();
+        return message === null || message === void 0 ? void 0 : message.forward_from_chat;
     }
     getReplyToMessageId() {
         var _a;
@@ -31,11 +32,13 @@ class AppTelegramContextAdapter {
         return (_a = message === null || message === void 0 ? void 0 : message.reply_to_message) === null || _a === void 0 ? void 0 : _a.message_id;
     }
     getVoiceFileId() {
-        return this.ctx.update.message.voice.file_id;
+        const message = this.getMessageObj();
+        return message.voice.file_id;
     }
     getMessageObj() {
         var _a;
-        return this.ctx.update.message || ((_a = this.ctx.update.callback_query) === null || _a === void 0 ? void 0 : _a.message);
+        const update = this.ctx.update;
+        return update.message || update.edited_message || ((_a = update.callback_query) === null || _a === void 0 ? void 0 : _a.message);
     }
     getMessageId() {
         const message = this.getMessageObj();
@@ -44,6 +47,16 @@ class AppTelegramContextAdapter {
     getChatId() {
         const message = this.getMessageObj();
         return message === null || message === void 0 ? void 0 : message.chat.id;
+    }
+    getThreadMessageId() {
+        const message = this.getMessageObj();
+        if (message.message_thread_id) {
+            return message.message_thread_id;
+        }
+        if (this.ctx.update.edited_message) {
+            return this.ctx.update.edited_message.message_id;
+        }
+        return null;
     }
 }
 exports.AppTelegramContextAdapter = AppTelegramContextAdapter;

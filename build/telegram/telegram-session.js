@@ -30,7 +30,7 @@ class TelegramSession {
         if (!session[replyMessageId]) {
             session[replyMessageId] = {};
         }
-        session[replyMessageId].threadConfig = Object.assign(Object.assign({ textToSpeech: telegram_types_1.TextToSpeechAction.noVoice }, (session[replyMessageId].threadConfig || {})), newConfig);
+        session[replyMessageId].threadConfig = Object.assign(Object.assign({ textToSpeech: telegram_types_1.TextToSpeechAction.noVoice, threatName: '' }, (session[replyMessageId].threadConfig || {})), newConfig);
         db_1.AppDb.writeThreadConfig(chatId, replyMessageId, session[replyMessageId].threadConfig);
     }
     getMessages() {
@@ -54,8 +54,7 @@ class TelegramSession {
         return Object.assign({}, (config || {}));
     }
     getSessionMessagesByReplyId() {
-        var _a;
-        return (_a = this.contextAdapter.getReplyToMessageId()) !== null && _a !== void 0 ? _a : this.defaultId;
+        return this.contextAdapter.getThreadMessageId() || this.defaultId;
     }
 }
 exports.TelegramSession = TelegramSession;

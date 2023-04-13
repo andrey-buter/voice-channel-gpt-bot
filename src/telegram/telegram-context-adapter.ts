@@ -1,4 +1,5 @@
 import { AppContext } from '../types/telegram.types';
+import { log } from '../utils/log.utils';
 
 export class AppTelegramContextAdapter {
   constructor(public ctx: AppContext) {}
@@ -16,7 +17,9 @@ export class AppTelegramContextAdapter {
   }
 
   getText() {
-    return this.ctx.update.message.text;
+    const message = this.getMessageObj() as any;
+
+    return message?.text || '';
   }
 
   getUserId() {
@@ -26,7 +29,9 @@ export class AppTelegramContextAdapter {
   }
 
   getForwardFromChatId() {
-    return this.ctx.update.message?.forward_from_chat;
+    const message = this.getMessageObj() as any;
+
+    return message?.forward_from_chat;
   }
 
   getReplyToMessageId() {
@@ -36,11 +41,14 @@ export class AppTelegramContextAdapter {
   }
 
   getVoiceFileId() {
-    return this.ctx.update.message.voice.file_id;
+    const message = this.getMessageObj() as any;
+
+    return message.voice.file_id;
   }
 
   getMessageObj() {
-    return this.ctx.update.message || this.ctx.update.callback_query?.message;
+    const update = this.ctx.update;
+    return update.message || update.edited_message || update.callback_query?.message;
   }
 
   getMessageId() {
@@ -52,5 +60,19 @@ export class AppTelegramContextAdapter {
   getChatId() {
     const message = this.getMessageObj();
     return message?.chat.id;
+  }
+
+  getThreadMessageId() {
+    const message = this.getMessageObj() as any;
+
+    if (message.message_thread_id) {
+      return message.message_thread_id;
+    }
+
+    if (this.ctx.update.edited_message) {
+      return this.ctx.update.edited_message.message_id;
+    }
+
+    return null;
   }
 }

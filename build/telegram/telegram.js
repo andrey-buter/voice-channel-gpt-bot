@@ -80,7 +80,7 @@ If you want to reset the conversation, type /reset
             yield ctx.telegram.callApi('setMyCommands', {
                 commands: [
                     {
-                        command: '/teach',
+                        command: '/start',
                         description: 'Start conversation',
                     },
                     {
@@ -102,6 +102,18 @@ If you want to reset the conversation, type /reset
             const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
             ctxDecorator.session.updateMessages([]);
         });
+        // @ts-ignore
+        this.bot.on((0, filters_1.editedMessage)('text'), (ctx) => __awaiter(this, void 0, void 0, function* () {
+            const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
+            if (!this.isAllowed(ctxDecorator)) {
+                return;
+            }
+            // for main channel messages stream (i.e. for thread): don't react on a new post
+            if (ctxDecorator.getForwardFromChatId()) {
+                this.saveThreadTextToConfig(ctxDecorator);
+                return;
+            }
+        }));
         // @ts-ignore
         this.bot.on((0, filters_1.message)('text'), (ctx) => __awaiter(this, void 0, void 0, function* () {
             const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
@@ -137,8 +149,7 @@ If you want to reset the conversation, type /reset
                 yield this.reply(ctxDecorator, this.restrictedMessage);
                 return;
             }
-            (0, log_utils_1.log)('getForwardFromChatId', ctxDecorator.getForwardFromChatId());
-            // for main channel messages stream: don't react on a new post
+            // for main channel messages stream (i.e. for thread): don't react on a new post
             if (ctxDecorator.getForwardFromChatId()) {
                 yield this.sendFirstThreadMessage(ctxDecorator);
                 return;
@@ -146,9 +157,15 @@ If you want to reset the conversation, type /reset
             yield cb(ctxDecorator);
         });
     }
+    saveThreadTextToConfig(ctxDecorator) {
+        (0, log_utils_1.log)(ctxDecorator.adapter.getText());
+        ctxDecorator.session.updateThreadConfig({
+            threatName: ctxDecorator.adapter.getText(),
+        });
+    }
     sendFirstThreadMessage(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
-            (0, log_utils_1.log)('sendFirstThreadMessage', 'First message sent');
+            this.saveThreadTextToConfig(ctxDecorator);
             return yield ctxDecorator.sendTextToSpeechQuestion();
         });
     }
@@ -169,8 +186,6 @@ If you want to reset the conversation, type /reset
         return __awaiter(this, void 0, void 0, function* () {
             const loadingMessage = yield this.replyLoadingState(ctxDecorator, `Transcribing...`);
             const fileLink = yield this.bot.telegram.getFileLink(ctxDecorator.getVoiceFileId());
-            const config = ctxDecorator.session.getThreadConfig();
-            (0, log_utils_1.log)(config);
             yield download(fileLink.href, this.mediaDir);
             const filename = path_1.default.parse(fileLink.pathname).base;
             const filePath = `./${this.mediaDir}/${filename}`;

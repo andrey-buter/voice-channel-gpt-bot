@@ -2,11 +2,9 @@ import * as fs from 'fs';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai/dist/api';
 import path from 'path';
 import { sanitize } from 'sanitize-filename-ts';
-import { Context, Markup, session, Telegraf } from 'telegraf';
-import { message } from 'telegraf/filters';
-import { FilteredContext } from 'telegraf/src/context';
+import { session, Telegraf } from 'telegraf';
+import { message, editedMessage } from 'telegraf/filters';
 import { ExtraReplyMessage } from 'telegraf/src/telegram-types';
-import { Update } from 'typegram';
 import { AppFileSystem } from '../utils/file-system';
 import { OpenAiEngine } from '../integrations/open-ai';
 import { ENV_VARS } from '../env';
@@ -55,7 +53,7 @@ If you want to reset the conversation, type /reset
       await ctx.telegram.callApi('setMyCommands', {
         commands: [
           {
-            command: '/teach',
+            command: '/start',
             description: 'Start conversation',
           },
           {
@@ -76,6 +74,21 @@ If you want to reset the conversation, type /reset
     this.bot.command('reset', (ctx: AppContext) => {
       const ctxDecorator = new AppTelegramContextDecorator(ctx);
       ctxDecorator.session.updateMessages([]);
+    });
+
+    // @ts-ignore
+    this.bot.on(editedMessage('text'), async (ctx: AppContext) => {
+      const ctxDecorator = new AppTelegramContextDecorator(ctx);
+
+      if (!this.isAllowed(ctxDecorator)) {
+        return;
+      }
+
+      // for main channel messages stream (i.e. for thread): don't react on a new post
+      if (ctxDecorator.getForwardFromChatId()) {
+        this.saveThreadTextToConfig(ctxDecorator);
+        return;
+      }
     });
 
     // @ts-ignore
@@ -120,9 +133,7 @@ If you want to reset the conversation, type /reset
       return;
     }
 
-    log('getForwardFromChatId', ctxDecorator.getForwardFromChatId())
-
-    // for main channel messages stream: don't react on a new post
+    // for main channel messages stream (i.e. for thread): don't react on a new post
     if (ctxDecorator.getForwardFromChatId()) {
       await this.sendFirstThreadMessage(ctxDecorator);
       return;
@@ -131,8 +142,15 @@ If you want to reset the conversation, type /reset
     await cb(ctxDecorator);
   }
 
+  private saveThreadTextToConfig(ctxDecorator: AppContextDecorator) {
+    log(ctxDecorator.adapter.getText())
+    ctxDecorator.session.updateThreadConfig({
+      threatName: ctxDecorator.adapter.getText(),
+    });
+  }
+
   private async sendFirstThreadMessage(ctxDecorator: AppContextDecorator) {
-    log('sendFirstThreadMessage', 'First message sent')
+    this.saveThreadTextToConfig(ctxDecorator);
     return await ctxDecorator.sendTextToSpeechQuestion();
   }
 
@@ -156,9 +174,6 @@ If you want to reset the conversation, type /reset
   private async onVoice(ctxDecorator: AppContextDecorator) {
     const loadingMessage = await this.replyLoadingState(ctxDecorator, `Transcribing...`);
     const fileLink = await this.bot.telegram.getFileLink(ctxDecorator.getVoiceFileId());
-    const config = ctxDecorator.session.getThreadConfig();
-
-    log(config);
 
     await download(fileLink.href, this.mediaDir);
     const filename = path.parse(fileLink.pathname).base;

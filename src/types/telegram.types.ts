@@ -42,6 +42,7 @@ export type SessionData = Record<MessageSessionId, {
 
 export interface ThreadConfig {
   textToSpeech: TextToSpeechAction;
+  threatName: string;
 }
 
 export enum ActionNamespaces {

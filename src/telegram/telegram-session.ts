@@ -37,6 +37,7 @@ export class TelegramSession {
 
     session[replyMessageId].threadConfig = {
       textToSpeech: TextToSpeechAction.noVoice,
+      threatName: '',
       ...(session[replyMessageId].threadConfig || {}),
       ...newConfig,
     };
@@ -69,6 +70,6 @@ export class TelegramSession {
   }
 
   private getSessionMessagesByReplyId(): MessageSessionId {
-    return this.contextAdapter.getReplyToMessageId() ?? this.defaultId;
+    return this.contextAdapter.getThreadMessageId() || this.defaultId;
   }
 }
