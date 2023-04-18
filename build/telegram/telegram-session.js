@@ -33,7 +33,7 @@ class TelegramSession {
         session[replyMessageId].threadConfig = Object.assign(Object.assign({ textToSpeech: telegram_types_1.TextToSpeechAction.noVoice, threatName: '' }, (session[replyMessageId].threadConfig || {})), newConfig);
         db_1.AppDb.writeThreadConfig(chatId, replyMessageId, session[replyMessageId].threadConfig);
     }
-    getMessages(messagesCount = 0) {
+    getMessages() {
         var _a, _b;
         const replyMessageId = this.getSessionMessagesByReplyId();
         const chatId = this.contextAdapter.getChatId();
@@ -41,11 +41,7 @@ class TelegramSession {
         if (!history) {
             history = db_1.AppDb.readThreadHistory(chatId, replyMessageId);
         }
-        const messages = [...(history || [])];
-        if (messagesCount === 0) {
-            return messages;
-        }
-        return [...messages].splice(messagesCount * -1);
+        return [...(history || [])];
     }
     getThreadConfig() {
         var _a, _b;

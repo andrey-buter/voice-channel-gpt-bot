@@ -256,7 +256,7 @@ If you want to reset the conversation, type /reset
         var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
             const loadingMessage = yield this.replyLoadingState(ctxDecorator, `Loading...`);
-            const sessionMessages = ctxDecorator.session.getMessages(7);
+            const sessionMessages = ctxDecorator.session.getMessages();
             const config = ctxDecorator.session.getThreadConfig();
             sessionMessages.push({
                 content: userMessage,
@@ -264,7 +264,8 @@ If you want to reset the conversation, type /reset
             });
             let text = '';
             try {
-                const response = yield this.openAi.chat(sessionMessages);
+                // messages count add because of error: This model's maximum context length is 4097 tokens.
+                const response = yield this.openAi.chat([...sessionMessages].slice(-8));
                 text = response.data.choices.map(choice => { var _a; return (_a = choice === null || choice === void 0 ? void 0 : choice.message) === null || _a === void 0 ? void 0 : _a.content; }).join(' | ');
                 sessionMessages.push({
                     content: text,

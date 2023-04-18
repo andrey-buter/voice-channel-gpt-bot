@@ -250,7 +250,7 @@ If you want to reset the conversation, type /reset
 
   private async chat(ctxDecorator: AppContextDecorator, userMessage: string) {
     const loadingMessage = await this.replyLoadingState(ctxDecorator, `Loading...`);
-    const sessionMessages = ctxDecorator.session.getMessages(7);
+    const sessionMessages = ctxDecorator.session.getMessages();
     const config = ctxDecorator.session.getThreadConfig();
 
     sessionMessages.push({
@@ -261,7 +261,8 @@ If you want to reset the conversation, type /reset
     let text = '';
 
     try {
-      const response = await this.openAi.chat(sessionMessages);
+      // messages count add because of error: This model's maximum context length is 4097 tokens.
+      const response = await this.openAi.chat([...sessionMessages].slice(-8));
       text = response.data.choices.map(choice => choice?.message?.content).join(' | ');
 
       sessionMessages.push({
