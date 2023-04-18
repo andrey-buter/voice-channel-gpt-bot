@@ -6,6 +6,7 @@ import { session, Telegraf } from 'telegraf';
 import { message, editedMessage } from 'telegraf/filters';
 import { ExtraReplyMessage } from 'telegraf/src/telegram-types';
 import { URL } from 'url';
+import { getLastArrayItems } from '../utils/common.util';
 import { downloadFile } from '../utils/download.util';
 import { AppFileSystem } from '../utils/file-system';
 import { OpenAiEngine } from '../integrations/open-ai';
@@ -148,23 +149,14 @@ If you want to reset the conversation, type /reset
 
   private async onVoice(ctxDecorator: AppContextDecorator) {
     const loadingMessage = await ctxDecorator.replyLoadingState(`Transcribing...`);
-    let fileLink: URL;
-
-
-
-    try {
-      fileLink = await ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
-    } catch (e) {
-      log('onVoice', e);
-      return;
-    }
+    const fileLink = await ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
 
     const filename = path.parse(fileLink.pathname).base;
 
     try {
       await downloadFile(fileLink.href, `${this.mediaDir}/${filename}`);
-    } catch (e) {
-      log('download', e);
+    } catch (error) {
+      await ctxDecorator.editLoadingReply(loadingMessage, `[ERROR:Voice downloading] ${error}`);
       return;
     }
     const filePath = `./${this.mediaDir}/${filename}`;
@@ -231,7 +223,8 @@ If you want to reset the conversation, type /reset
 
     try {
       // messages count add because of error: This model's maximum context length is 4097 tokens.
-      const response = await this.openAi.chat([...sessionMessages].slice(-8));
+      // Max tokens count in a single message I got is 510
+      const response = await this.openAi.chat(getLastArrayItems(sessionMessages, 10));
       text = response.data.choices.map(choice => choice?.message?.content).join(' | ');
 
       sessionMessages.push({

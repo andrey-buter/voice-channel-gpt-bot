@@ -41,6 +41,7 @@ const api_1 = require("openai/dist/api");
 const path_1 = __importDefault(require("path"));
 const telegraf_1 = require("telegraf");
 const filters_1 = require("telegraf/filters");
+const common_util_1 = require("../utils/common.util");
 const download_util_1 = require("../utils/download.util");
 const file_system_1 = require("../utils/file-system");
 const open_ai_1 = require("../integrations/open-ai");
@@ -162,20 +163,13 @@ If you want to reset the conversation, type /reset
     onVoice(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
             const loadingMessage = yield ctxDecorator.replyLoadingState(`Transcribing...`);
-            let fileLink;
-            try {
-                fileLink = yield ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
-            }
-            catch (e) {
-                (0, log_utils_1.log)('onVoice', e);
-                return;
-            }
+            const fileLink = yield ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
             const filename = path_1.default.parse(fileLink.pathname).base;
             try {
                 yield (0, download_util_1.downloadFile)(fileLink.href, `${this.mediaDir}/${filename}`);
             }
-            catch (e) {
-                (0, log_utils_1.log)('download', e);
+            catch (error) {
+                yield ctxDecorator.editLoadingReply(loadingMessage, `[ERROR:Voice downloading] ${error}`);
                 return;
             }
             const filePath = `./${this.mediaDir}/${filename}`;
@@ -235,7 +229,8 @@ If you want to reset the conversation, type /reset
             let text = '';
             try {
                 // messages count add because of error: This model's maximum context length is 4097 tokens.
-                const response = yield this.openAi.chat([...sessionMessages].slice(-8));
+                // Max tokens count in a single message I got is 510
+                const response = yield this.openAi.chat((0, common_util_1.getLastArrayItems)(sessionMessages, 10));
                 text = response.data.choices.map(choice => { var _a; return (_a = choice === null || choice === void 0 ? void 0 : choice.message) === null || _a === void 0 ? void 0 : _a.content; }).join(' | ');
                 sessionMessages.push({
                     content: text,
