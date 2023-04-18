@@ -36,7 +36,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TelegramBotMessageHandler = void 0;
+const download_1 = __importDefault(require("download"));
 const fs = __importStar(require("fs"));
+const https = __importStar(require("https"));
 const api_1 = require("openai/dist/api");
 const path_1 = __importDefault(require("path"));
 const telegraf_1 = require("telegraf");
@@ -49,7 +51,6 @@ const mpeg_utils_1 = require("../utils/mpeg.utils");
 const telegram_context_decorator_1 = require("./telegram-context-decorator");
 const telegram_types_1 = require("../types/telegram.types");
 const text_to_speech_1 = require("../integrations/text-to-speech");
-const download = require('download');
 class TelegramBotMessageHandler {
     constructor() {
         // AppFileSystem.createFileOrDir(this.mediaDir);
@@ -70,6 +71,7 @@ If you want to reset the conversation, type /reset
         // Then you ask the next question. Let's go!
         // `;
         this.mediaDir = env_1.ENV_VARS.TMP_MEDIA_DIR;
+        this.getCertificate();
         this.bot.use((0, telegraf_1.session)());
         // this.bot.use(async (ctx, next) => {
         //   await next();
@@ -162,8 +164,23 @@ If you want to reset the conversation, type /reset
     onVoice(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
             const loadingMessage = yield ctxDecorator.replyLoadingState(`Transcribing...`);
-            const fileLink = yield ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
-            yield download(fileLink.href, this.mediaDir);
+            let fileLink;
+            try {
+                fileLink = yield ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
+            }
+            catch (e) {
+                (0, log_utils_1.log)('onVoice', e);
+                return;
+            }
+            try {
+                yield (0, download_1.default)(fileLink.href, this.mediaDir, {
+                    cert: ''
+                });
+            }
+            catch (e) {
+                (0, log_utils_1.log)('download', e);
+                return;
+            }
             const filename = path_1.default.parse(fileLink.pathname).base;
             const filePath = `./${this.mediaDir}/${filename}`;
             const mp3filePath = `./${this.mediaDir}/${filename}`.replace('.oga', '.mp3');
@@ -251,6 +268,17 @@ If you want to reset the conversation, type /reset
                 yield ctxDecorator.reply(`[Text To Speech Error]: ${error}`);
             }
         });
+    }
+    getCertificate() {
+        const options = {
+            host: 'google.com',
+            port: 443,
+            method: 'GET'
+        };
+        const req = https.request(options, function (res) {
+            console.log(res.connection.getPeerCertificate());
+        });
+        req.end();
     }
 }
 exports.TelegramBotMessageHandler = TelegramBotMessageHandler;
