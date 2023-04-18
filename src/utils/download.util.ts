@@ -11,7 +11,6 @@ export async function downloadFile(url: string, path: string) {
 
 			writeStream.on("finish", () => {
 				writeStream.close();
-				console.log("Download Completed");
 				resolve();
 			});
 		});
