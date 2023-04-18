@@ -250,7 +250,7 @@ If you want to reset the conversation, type /reset
 
   private async chat(ctxDecorator: AppContextDecorator, userMessage: string) {
     const loadingMessage = await this.replyLoadingState(ctxDecorator, `Loading...`);
-    const sessionMessages = ctxDecorator.session.getMessages();
+    const sessionMessages = ctxDecorator.session.getMessages(7);
     const config = ctxDecorator.session.getThreadConfig();
 
     sessionMessages.push({

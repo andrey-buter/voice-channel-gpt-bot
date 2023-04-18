@@ -45,7 +45,8 @@ export class TelegramSession {
     AppDb.writeThreadConfig(chatId, replyMessageId, session[replyMessageId].threadConfig);
   }
 
-  public getMessages() {
+  // messages count add because of error: This model's maximum context length is 4097 tokens.
+  public getMessages(messagesCount: number = 0) {
     const replyMessageId = this.getSessionMessagesByReplyId();
     const chatId = this.contextAdapter.getChatId();
     let history = this.contextAdapter.getSession()?.[replyMessageId]?.messages;
@@ -54,7 +55,13 @@ export class TelegramSession {
       history = AppDb.readThreadHistory(chatId, replyMessageId);
     }
 
-    return [...(history || [])];
+    const messages = [...(history || [])];
+
+    if (messagesCount === 0) {
+      return messages;
+    }
+
+    return [...messages].splice(messagesCount * -1);
   }
 
   public getThreadConfig() {

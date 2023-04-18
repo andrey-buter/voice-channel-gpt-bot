@@ -256,7 +256,7 @@ If you want to reset the conversation, type /reset
         var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
             const loadingMessage = yield this.replyLoadingState(ctxDecorator, `Loading...`);
-            const sessionMessages = ctxDecorator.session.getMessages();
+            const sessionMessages = ctxDecorator.session.getMessages(7);
             const config = ctxDecorator.session.getThreadConfig();
             sessionMessages.push({
                 content: userMessage,
