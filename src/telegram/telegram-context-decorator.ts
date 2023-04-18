@@ -1,6 +1,16 @@
+import fs from 'fs';
+import { sanitize } from 'sanitize-filename-ts';
 import { Markup } from 'telegraf';
+import { ExtraReplyMessage } from 'telegraf/src/telegram-types';
 import { ExtraEditMessageText } from 'telegraf/typings/telegram-types';
-import { ActionNamespaces, AppContext, AppLabels, TextToSpeechAction } from '../types/telegram.types';
+import {
+  ActionNamespaces,
+  AppContext,
+  AppLabels,
+  TelegramReplyMessage,
+  TextToSpeechAction
+} from '../types/telegram.types';
+import { log } from '../utils/log.utils';
 import { AppTelegramContextAdapter } from './telegram-context-adapter';
 import { TelegramSession } from './telegram-session';
 
@@ -69,5 +79,63 @@ export class AppTelegramContextDecorator {
     const config = this.session.getThreadConfig();
 
     await this.editMessage(`Thread settings: \nText-to-Speech: ${AppLabels[config.textToSpeech]}`);
+  }
+
+  public async editLoadingReply(
+    editMessageObj: TelegramReplyMessage,
+    text: string,
+  ) {
+    await this.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text);
+  }
+
+  public async reply(message: string) {
+    // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
+    try {
+      return (await this.ctx.reply(message, this.getReplyArgs())) as any as TelegramReplyMessage;
+    } catch (e) {
+      log('reply', e);
+    }
+  }
+
+  private getReplyArgs(): ExtraReplyMessage | undefined {
+    const replayToMessageId = this.getReplyToMessageId();
+    if (!replayToMessageId) {
+      return;
+    }
+
+    const args: ExtraReplyMessage = {
+      reply_to_message_id: replayToMessageId,
+    };
+
+    return args;
+  }
+
+  public async deleteMessage(messageId: number) {
+    await this.ctx.deleteMessage(messageId);
+  }
+
+  public async replyLoadingState(message: string) {
+    return await this.reply(message);
+  }
+
+  public async sendAudio(filePath: string, text: string) {
+    const readStream = fs.createReadStream(filePath);
+
+    try {
+      await this.ctx.sendAudio({ source: readStream, filename: sanitize(text) }, this.getReplyArgs());
+    } catch (e) {
+      log('sendAudio', e);
+    }
+  }
+
+  public async sendFirstThreadMessage() {
+    this.saveThreadTextToConfig();
+    return await this.sendTextToSpeechQuestion();
+  }
+
+  public saveThreadTextToConfig() {
+    this.session.updateThreadConfig({
+      threatName: this.adapter.getText(),
+    });
   }
 }

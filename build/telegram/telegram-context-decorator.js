@@ -8,10 +8,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppTelegramContextDecorator = void 0;
+const fs_1 = __importDefault(require("fs"));
+const sanitize_filename_ts_1 = require("sanitize-filename-ts");
 const telegraf_1 = require("telegraf");
 const telegram_types_1 = require("../types/telegram.types");
+const log_utils_1 = require("../utils/log.utils");
 const telegram_context_adapter_1 = require("./telegram-context-adapter");
 const telegram_session_1 = require("./telegram-session");
 class AppTelegramContextDecorator {
@@ -61,6 +67,64 @@ class AppTelegramContextDecorator {
         return __awaiter(this, void 0, void 0, function* () {
             const config = this.session.getThreadConfig();
             yield this.editMessage(`Thread settings: \nText-to-Speech: ${telegram_types_1.AppLabels[config.textToSpeech]}`);
+        });
+    }
+    editLoadingReply(editMessageObj, text) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text);
+        });
+    }
+    reply(message) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
+            try {
+                return (yield this.ctx.reply(message, this.getReplyArgs()));
+            }
+            catch (e) {
+                (0, log_utils_1.log)('reply', e);
+            }
+        });
+    }
+    getReplyArgs() {
+        const replayToMessageId = this.getReplyToMessageId();
+        if (!replayToMessageId) {
+            return;
+        }
+        const args = {
+            reply_to_message_id: replayToMessageId,
+        };
+        return args;
+    }
+    deleteMessage(messageId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.ctx.deleteMessage(messageId);
+        });
+    }
+    replyLoadingState(message) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return yield this.reply(message);
+        });
+    }
+    sendAudio(filePath, text) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const readStream = fs_1.default.createReadStream(filePath);
+            try {
+                yield this.ctx.sendAudio({ source: readStream, filename: (0, sanitize_filename_ts_1.sanitize)(text) }, this.getReplyArgs());
+            }
+            catch (e) {
+                (0, log_utils_1.log)('sendAudio', e);
+            }
+        });
+    }
+    sendFirstThreadMessage() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.saveThreadTextToConfig();
+            return yield this.sendTextToSpeechQuestion();
+        });
+    }
+    saveThreadTextToConfig() {
+        this.session.updateThreadConfig({
+            threatName: this.adapter.getText(),
         });
     }
 }

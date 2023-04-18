@@ -16,11 +16,14 @@
 
 
 Resolved issues
-1) npm ERR! request to https://registry.npmjs.org/@types%2ffs-extra failed, reason: unable to get local issuer certificate
+1) ```npm ERR! request to https://registry.npmjs.org/@types%2ffs-extra failed, reason: unable to get local issuer certificate```
+   
 https://stackoverflow.com/a/46408398
 
-2) FetchError: request to https://api.telegram.org/bot6223615976:[REDACTED]/getMe failed, reason: self signed certificate in certificate chain
+2) ```FetchError: request to https://api.telegram.org/bot6223615976:[REDACTED]/getMe failed, reason: self signed certificate in certificate chain```
+
 https://stackoverflow.com/a/55220462
+
 https://weekendprojects.dev/posts/fix-for-npm-error-code-self-signed-cert-in-chain/#1-upgrade-node-and-npm-version-or-let-npm-to-use-known-registrars:~:text=2.-,Use%20the%20command%20export%20NODE_TLS_REJECT_UNAUTHORIZED%3D0,-We%20can%20set
 
 3) https://stackoverflow.com/questions/8313628/node-js-request-how-to-emitter-setmaxlisteners

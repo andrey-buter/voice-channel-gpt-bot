@@ -65,11 +65,11 @@ If you want to reset the conversation, type /reset
     });
     this.bot.start(async (ctx: any) => {
       const ctxDecorator = new AppTelegramContextDecorator(ctx);
-      await this.doForAllowedUserOrAction(ctxDecorator, () => this.replyLoadingState(ctxDecorator, this.startMessage));
+      await this.doForAllowedUserOrAction(ctxDecorator, () => ctxDecorator.replyLoadingState(this.startMessage));
     });
     this.bot.command('teach', async (ctx: AppContext) => {
       const ctxDecorator = new AppTelegramContextDecorator(ctx);
-      await this.doForAllowedUserOrAction(ctxDecorator, () => this.replyLoadingState(ctxDecorator, this.startTeach));
+      await this.doForAllowedUserOrAction(ctxDecorator, () => ctxDecorator.replyLoadingState(this.startTeach));
     });
     this.bot.command('reset', (ctx: AppContext) => {
       const ctxDecorator = new AppTelegramContextDecorator(ctx);
@@ -86,7 +86,7 @@ If you want to reset the conversation, type /reset
 
       // for main channel messages stream (i.e. for thread): don't react on a new post
       if (ctxDecorator.isMainChatMessage()) {
-        this.saveThreadTextToConfig(ctxDecorator);
+        ctxDecorator.saveThreadTextToConfig();
         return;
       }
     });
@@ -129,50 +129,26 @@ If you want to reset the conversation, type /reset
 
   private async doForAllowedUserOrAction(ctxDecorator: AppContextDecorator, cb: (ctx: AppContextDecorator) => void) {
     if (!this.isAllowed(ctxDecorator)) {
-      await this.reply(ctxDecorator, this.restrictedMessage);
+      await ctxDecorator.reply(this.restrictedMessage);
       return;
     }
 
     // for main channel messages stream (i.e. for thread): don't react on a new post
     if (ctxDecorator.isMainChatMessage()) {
-      await this.sendFirstThreadMessage(ctxDecorator);
+      await ctxDecorator.sendFirstThreadMessage();
       return;
     }
 
     await cb(ctxDecorator);
   }
 
-  private saveThreadTextToConfig(ctxDecorator: AppContextDecorator) {
-    ctxDecorator.session.updateThreadConfig({
-      threatName: ctxDecorator.adapter.getText(),
-    });
-  }
-
-  private async sendFirstThreadMessage(ctxDecorator: AppContextDecorator) {
-    this.saveThreadTextToConfig(ctxDecorator);
-    return await ctxDecorator.sendTextToSpeechQuestion();
-  }
-
   private isAllowed(ctxDecorator: AppContextDecorator) {
     return this.allowedUserIds.includes(ctxDecorator.getUserId());
   }
 
-  private getReplyArgs(ctxDecorator: AppContextDecorator): ExtraReplyMessage | undefined {
-    const replayToMessageId = ctxDecorator.getReplyToMessageId();
-    if (!replayToMessageId) {
-      return;
-    }
-
-    const args: ExtraReplyMessage = {
-      reply_to_message_id: replayToMessageId,
-    };
-
-    return args;
-  }
-
   private async onVoice(ctxDecorator: AppContextDecorator) {
-    const loadingMessage = await this.replyLoadingState(ctxDecorator, `Transcribing...`);
-    const fileLink = await this.bot.telegram.getFileLink(ctxDecorator.getVoiceFileId());
+    const loadingMessage = await ctxDecorator.replyLoadingState(`Transcribing...`);
+    const fileLink = await ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
 
     await download(fileLink.href, this.mediaDir);
     const filename = path.parse(fileLink.pathname).base;
@@ -186,14 +162,13 @@ If you want to reset the conversation, type /reset
         const response = await this.openAi.transcript(stream);
         const text = response.data?.text || '';
 
-        await this.editLoadingReply(ctxDecorator, loadingMessage, `[Voice message]: ${text}`);
+        await ctxDecorator.editLoadingReply(loadingMessage, `[Voice message]: ${text}`);
         await this.fixMistakesReply(ctxDecorator, text);
 
         await this.chat(ctxDecorator, text);
       } catch (error) {
         log(error.response.data);
-        await this.editLoadingReply(
-          ctxDecorator,
+        await ctxDecorator.editLoadingReply(
           loadingMessage,
           `[ERROR:Transcription] ${error.response.data.error.message}`,
         );
@@ -205,7 +180,7 @@ If you want to reset the conversation, type /reset
   }
 
   private async fixMistakesReply(ctxDecorator: AppContextDecorator, text: string) {
-    const loadingMessage = await this.replyLoadingState(ctxDecorator, `Fixing...`);
+    const loadingMessage = await ctxDecorator.replyLoadingState(`Fixing...`);
     const mistakesResp = await this.openAi.chat([
       {
         content: `Fix the sentence mistakes: ${text}`,
@@ -215,28 +190,7 @@ If you want to reset the conversation, type /reset
 
     const fixedText = mistakesResp.data.choices.map(choice => choice?.message?.content).join(' | ');
 
-    await this.editLoadingReply(ctxDecorator, loadingMessage, `[Fixed message]: ${fixedText}`);
-  }
-
-  private async replyLoadingState(ctxDecorator: AppContextDecorator, message: string) {
-    return await this.reply(ctxDecorator, message);
-  }
-
-  private async reply(ctxDecorator: AppContextDecorator, message: string) {
-    // await ctx.replyWithMarkdownV2(this.escape(message), this.getReplyArgs(ctx));
-    return (await ctxDecorator.ctx.reply(message, this.getReplyArgs(ctxDecorator))) as any as TelegramReplyMessage;
-  }
-
-  private async editLoadingReply(
-    ctxDecorator: AppContextDecorator,
-    editMessageObj: TelegramReplyMessage,
-    text: string,
-  ) {
-    await ctxDecorator.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text);
-  }
-
-  private async deleteMessage(ctxDecorator: AppContextDecorator, messageId: number) {
-    await ctxDecorator.ctx.deleteMessage(messageId);
+    await ctxDecorator.editLoadingReply(loadingMessage, `[Fixed message]: ${fixedText}`);
   }
 
   private deleteFile(filePath: string) {
@@ -249,7 +203,7 @@ If you want to reset the conversation, type /reset
   }
 
   private async chat(ctxDecorator: AppContextDecorator, userMessage: string) {
-    const loadingMessage = await this.replyLoadingState(ctxDecorator, `Loading...`);
+    const loadingMessage = await ctxDecorator.replyLoadingState(`Loading...`);
     const sessionMessages = ctxDecorator.session.getMessages();
     const config = ctxDecorator.session.getThreadConfig();
 
@@ -271,13 +225,13 @@ If you want to reset the conversation, type /reset
       });
 
       ctxDecorator.session.updateMessages(sessionMessages);
-      await this.editLoadingReply(ctxDecorator, loadingMessage, text);
+      await ctxDecorator.editLoadingReply(loadingMessage, text);
     } catch (error) {
       logError(error);
       const text = `[ERROR:ChatGPT]: ${
         error.response?.data?.error?.message || error.response?.description || error.response
       }`;
-      await this.editLoadingReply(ctxDecorator, loadingMessage, text);
+      await ctxDecorator.editLoadingReply(loadingMessage, text);
     }
 
     if (config.textToSpeech === TextToSpeechAction.noVoice) {
@@ -288,18 +242,12 @@ If you want to reset the conversation, type /reset
       const convertedFilePath = await this.tts.convert(text, config.textToSpeech);
 
       if (convertedFilePath) {
-        await this.sendAudio(ctxDecorator, convertedFilePath, text);
+        await ctxDecorator.sendAudio(convertedFilePath, text);
         this.deleteFile(convertedFilePath);
       }
     } catch (error) {
       log(error);
-      await this.reply(ctxDecorator, `[Text To Speech Error]: ${error}`);
+      await ctxDecorator.reply(`[Text To Speech Error]: ${error}`);
     }
-  }
-
-  private async sendAudio(ctxDecorator: AppContextDecorator, filePath: string, text: string) {
-    const readStream = fs.createReadStream(filePath);
-
-    await ctxDecorator.ctx.sendAudio({ source: readStream, filename: sanitize(text) }, this.getReplyArgs(ctxDecorator));
   }
 }
