@@ -36,7 +36,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TelegramBotMessageHandler = void 0;
-const download_1 = __importDefault(require("download"));
 const fs = __importStar(require("fs"));
 const https = __importStar(require("https"));
 const api_1 = require("openai/dist/api");
@@ -71,7 +70,6 @@ If you want to reset the conversation, type /reset
         // Then you ask the next question. Let's go!
         // `;
         this.mediaDir = env_1.ENV_VARS.TMP_MEDIA_DIR;
-        this.getCertificate();
         this.bot.use((0, telegraf_1.session)());
         // this.bot.use(async (ctx, next) => {
         //   await next();
@@ -172,16 +170,18 @@ If you want to reset the conversation, type /reset
                 (0, log_utils_1.log)('onVoice', e);
                 return;
             }
+            const filename = path_1.default.parse(fileLink.pathname).base;
             try {
-                yield (0, download_1.default)(fileLink.href, this.mediaDir, {
-                    cert: ''
-                });
+                // const cert = await this.getCertificate();
+                // await download(fileLink.href, this.mediaDir, {
+                //   cert
+                // });
+                yield this.download(fileLink.href, `${this.mediaDir}/${filename}`);
             }
             catch (e) {
                 (0, log_utils_1.log)('download', e);
                 return;
             }
-            const filename = path_1.default.parse(fileLink.pathname).base;
             const filePath = `./${this.mediaDir}/${filename}`;
             const mp3filePath = `./${this.mediaDir}/${filename}`.replace('.oga', '.mp3');
             (0, mpeg_utils_1.convertOggToMp3)(filePath, mp3filePath, () => __awaiter(this, void 0, void 0, function* () {
@@ -269,16 +269,35 @@ If you want to reset the conversation, type /reset
             }
         });
     }
-    getCertificate() {
-        const options = {
-            host: 'google.com',
-            port: 443,
-            method: 'GET'
-        };
-        const req = https.request(options, function (res) {
-            console.log(res.connection.getPeerCertificate());
+    // private async getCertificate() {
+    //   const options = {
+    //     host: 'google.com',
+    //     port: 443,
+    //     method: 'GET'
+    //   };
+    //
+    //   return  new Promise<Buffer>((resolve) => {
+    //     const req = https.request(options, function(res) {
+    //       // console.log(Array.from(((res.connection as any).getPeerCertificate().pubkey as Buffer).values()));
+    //       resolve((res.connection as any).getPeerCertificate().pubkey as Buffer);
+    //     });
+    //     req.end();
+    //   })
+    // }
+    download(url, path) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise(resolve => {
+                https.get(url, (res) => {
+                    const writeStream = fs.createWriteStream(path);
+                    res.pipe(writeStream);
+                    writeStream.on("finish", () => {
+                        writeStream.close();
+                        console.log("Download Completed");
+                        resolve();
+                    });
+                });
+            });
         });
-        req.end();
     }
 }
 exports.TelegramBotMessageHandler = TelegramBotMessageHandler;

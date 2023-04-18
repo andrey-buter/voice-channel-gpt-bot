@@ -1,6 +1,4 @@
-import download from 'download';
 import * as fs from 'fs';
-import * as https from 'https';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai/dist/api';
 import path from 'path';
 import { sanitize } from 'sanitize-filename-ts';
@@ -8,6 +6,7 @@ import { session, Telegraf } from 'telegraf';
 import { message, editedMessage } from 'telegraf/filters';
 import { ExtraReplyMessage } from 'telegraf/src/telegram-types';
 import { URL } from 'url';
+import { downloadFile } from '../utils/download.util';
 import { AppFileSystem } from '../utils/file-system';
 import { OpenAiEngine } from '../integrations/open-ai';
 import { ENV_VARS } from '../env';
@@ -44,8 +43,6 @@ If you want to reset the conversation, type /reset
 
   constructor() {
     // AppFileSystem.createFileOrDir(this.mediaDir);
-
-    this.getCertificate();
 
     this.bot.use(session());
     // this.bot.use(async (ctx, next) => {
@@ -162,15 +159,14 @@ If you want to reset the conversation, type /reset
       return;
     }
 
+    const filename = path.parse(fileLink.pathname).base;
+
     try {
-      await download(fileLink.href, this.mediaDir, {
-        cert: ''
-      });
+      await downloadFile(fileLink.href, `${this.mediaDir}/${filename}`);
     } catch (e) {
       log('download', e);
       return;
     }
-    const filename = path.parse(fileLink.pathname).base;
     const filePath = `./${this.mediaDir}/${filename}`;
     const mp3filePath = `./${this.mediaDir}/${filename}`.replace('.oga', '.mp3');
 
@@ -268,19 +264,5 @@ If you want to reset the conversation, type /reset
       log(error);
       await ctxDecorator.reply(`[Text To Speech Error]: ${error}`);
     }
-  }
-
-  private getCertificate() {
-    const options = {
-      host: 'google.com',
-      port: 443,
-      method: 'GET'
-    };
-
-    const req = https.request(options, function(res) {
-      console.log((res.connection as any).getPeerCertificate());
-    });
-
-    req.end();
   }
 }
