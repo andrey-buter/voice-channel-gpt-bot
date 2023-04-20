@@ -119,9 +119,9 @@ If you want to reset the conversation, type /reset
       }
 
       if (actionNamespace === ActionNamespaces.replyMistake) {
-        await ctxDecorator.reply('The next audio message will not be recognized.');
+        await ctxDecorator.reply('The next audio message will be without chat GPT response.');
         // disabled voice recognition to allow user to record and repeat correct message aloud without chatting with GPT
-        ctxDecorator.session.disableVoiceRecognition();
+        ctxDecorator.session.enableAudioRepeatingMode();
       }
     });
 
@@ -158,11 +158,6 @@ If you want to reset the conversation, type /reset
   }
 
   private async onVoice(ctxDecorator: AppContextDecorator) {
-    if (!ctxDecorator.session.isVoiceRecognitionEnabled()) {
-      ctxDecorator.session.enableVoiceRecognition();
-      return;
-    }
-
     const loadingMessage = await ctxDecorator.replyLoadingState(`Transcribing...`);
     const fileLink = await ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
 
@@ -186,6 +181,11 @@ If you want to reset the conversation, type /reset
 
         await ctxDecorator.editLoadingReply(loadingMessage, `[Voice message]: ${text}`);
         await this.fixMyMistakesReply(ctxDecorator, text);
+
+        if (ctxDecorator.session.isAudioRepeatingModeEnabled()) {
+          ctxDecorator.session.disableAudioRepeatingMode();
+          return;
+        }
 
         await this.chat(ctxDecorator, text);
       } catch (error) {
@@ -222,7 +222,7 @@ If you want to reset the conversation, type /reset
   // private async onText(ctx: FilteredContext<MyContext, Extract<Update, 'Update.MessageUpdate'>>) {
   private async onText(ctxDecorator: AppContextDecorator) {
     // if user clicked to record fixed mistakes message and then started to text, then allow user to voice recognition
-    ctxDecorator.session.enableVoiceRecognition();
+    ctxDecorator.session.disableAudioRepeatingMode();
     await this.chat(ctxDecorator, ctxDecorator.getText());
   }
 

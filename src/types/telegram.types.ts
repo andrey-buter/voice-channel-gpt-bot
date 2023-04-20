@@ -45,7 +45,7 @@ export type SessionData = Record<MessageSessionId, ThreadSessionData>;
 export interface ThreadConfig {
   textToSpeech: TextToSpeechAction;
   threatName: string;
-  voiceRecognitionEnabled: boolean;
+  audioRepeatingModeEnabled: boolean;
 }
 
 export enum ActionNamespaces {

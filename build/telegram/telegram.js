@@ -137,9 +137,9 @@ If you want to reset the conversation, type /reset
                 yield ctxDecorator.sendThreadConfig();
             }
             if (actionNamespace === telegram_types_1.ActionNamespaces.replyMistake) {
-                yield ctxDecorator.reply('The next audio message will not be recognized.');
+                yield ctxDecorator.reply('The next audio message will be without chat GPT response.');
                 // disabled voice recognition to allow user to record and repeat correct message aloud without chatting with GPT
-                ctxDecorator.session.disableVoiceRecognition();
+                ctxDecorator.session.enableAudioRepeatingMode();
             }
         }));
         this.bot.launch();
@@ -170,10 +170,6 @@ If you want to reset the conversation, type /reset
     }
     onVoice(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!ctxDecorator.session.isVoiceRecognitionEnabled()) {
-                ctxDecorator.session.enableVoiceRecognition();
-                return;
-            }
             const loadingMessage = yield ctxDecorator.replyLoadingState(`Transcribing...`);
             const fileLink = yield ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
             const filename = path_1.default.parse(fileLink.pathname).base;
@@ -195,6 +191,10 @@ If you want to reset the conversation, type /reset
                     const text = ((_a = response.data) === null || _a === void 0 ? void 0 : _a.text) || '';
                     yield ctxDecorator.editLoadingReply(loadingMessage, `[Voice message]: ${text}`);
                     yield this.fixMyMistakesReply(ctxDecorator, text);
+                    if (ctxDecorator.session.isAudioRepeatingModeEnabled()) {
+                        ctxDecorator.session.disableAudioRepeatingMode();
+                        return;
+                    }
                     yield this.chat(ctxDecorator, text);
                 }
                 catch (error) {
@@ -226,7 +226,7 @@ If you want to reset the conversation, type /reset
     onText(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
             // if user clicked to record fixed mistakes message and then started to text, then allow user to voice recognition
-            ctxDecorator.session.enableVoiceRecognition();
+            ctxDecorator.session.disableAudioRepeatingMode();
             yield this.chat(ctxDecorator, ctxDecorator.getText());
         });
     }

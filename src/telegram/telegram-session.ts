@@ -53,7 +53,7 @@ export class TelegramSession {
       threadSession.threadConfig = {
         textToSpeech: TextToSpeechAction.noVoice,
         threatName: '',
-        voiceRecognitionEnabled: true,
+        audioRepeatingModeEnabled: false,
         ...(threadSession.threadConfig || {}),
         ...newConfig,
       };
@@ -99,15 +99,15 @@ export class TelegramSession {
     return this.contextAdapter.getThreadMessageId() || this.defaultId;
   }
 
-  public disableVoiceRecognition() {
-    this.updateThreadConfig({ voiceRecognitionEnabled: false });
+  public disableAudioRepeatingMode() {
+    this.updateThreadConfig({ audioRepeatingModeEnabled: false });
   }
 
-  public enableVoiceRecognition() {
-    this.updateThreadConfig({ voiceRecognitionEnabled: true });
+  public enableAudioRepeatingMode() {
+    this.updateThreadConfig({ audioRepeatingModeEnabled: true });
   }
 
-  public isVoiceRecognitionEnabled() {
-    return !!this.getThreadConfig().voiceRecognitionEnabled;
+  public isAudioRepeatingModeEnabled() {
+    return !!this.getThreadConfig().audioRepeatingModeEnabled;
   }
 }
