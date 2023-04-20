@@ -13,7 +13,7 @@ export class OpenAiEngine {
 
   chat(messages: ChatCompletionRequestMessage[]) {
     return this.openai.createChatCompletion({
-      model: 'gpt-3.5-turbo-0301',
+      model: 'gpt-3.5-turbo', // https://platform.openai.com/docs/models/model-endpoint-compatibility
       messages,
     });
   }

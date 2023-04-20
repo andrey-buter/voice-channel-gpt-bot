@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.TextToSpeechAction = exports.AppLabels = exports.ActionNamespaces = void 0;
+exports.ReplyMistakesLabel = exports.ReplyMistakeAction = exports.TextToSpeechAction = exports.AppLabels = exports.ActionNamespaces = void 0;
 var ActionNamespaces;
 (function (ActionNamespaces) {
     ActionNamespaces["speechToText"] = "speechToText";
     ActionNamespaces["textToSpeech"] = "textToSpeech";
+    ActionNamespaces["replyMistake"] = "replyMistake";
 })(ActionNamespaces = exports.ActionNamespaces || (exports.ActionNamespaces = {}));
 var AppLabels;
 (function (AppLabels) {
@@ -18,3 +19,12 @@ var TextToSpeechAction;
     TextToSpeechAction["ru"] = "ru";
     TextToSpeechAction["noVoice"] = "noVoice";
 })(TextToSpeechAction = exports.TextToSpeechAction || (exports.TextToSpeechAction = {}));
+var ReplyMistakeAction;
+(function (ReplyMistakeAction) {
+    ReplyMistakeAction["action"] = "action";
+})(ReplyMistakeAction = exports.ReplyMistakeAction || (exports.ReplyMistakeAction = {}));
+var ReplyMistakesLabel;
+(function (ReplyMistakesLabel) {
+    ReplyMistakesLabel["fixedMessage"] = "Fixed Message";
+    ReplyMistakesLabel["recordCorrectVersion"] = "Record correct version";
+})(ReplyMistakesLabel = exports.ReplyMistakesLabel || (exports.ReplyMistakesLabel = {}));

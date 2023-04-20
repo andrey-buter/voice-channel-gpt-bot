@@ -69,9 +69,9 @@ class AppTelegramContextDecorator {
             yield this.editMessage(`Thread settings: \nText-to-Speech: ${telegram_types_1.AppLabels[config.textToSpeech]}`);
         });
     }
-    editLoadingReply(editMessageObj, text) {
+    editLoadingReply(editMessageObj, text, extra) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text);
+            yield this.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text, extra);
         });
     }
     reply(message) {
@@ -125,6 +125,18 @@ class AppTelegramContextDecorator {
     saveThreadTextToConfig() {
         this.session.updateThreadConfig({
             threatName: this.adapter.getText(),
+        });
+    }
+    fixMistakesReply(editMessageObj, text) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let extra = {};
+            const correctMessageWordsRegExp = /(?<=\b(correct|no mistakes)\b\s+)\w+/gi;
+            if (!correctMessageWordsRegExp.test(text)) {
+                extra = telegraf_1.Markup.inlineKeyboard([
+                    telegraf_1.Markup.button.callback(telegram_types_1.ReplyMistakesLabel.recordCorrectVersion, `${telegram_types_1.ActionNamespaces.replyMistake}:${telegram_types_1.ReplyMistakeAction.action}`),
+                ]);
+            }
+            yield this.editLoadingReply(editMessageObj, `[${telegram_types_1.ReplyMistakesLabel.fixedMessage}]: ${text}`, extra);
         });
     }
 }

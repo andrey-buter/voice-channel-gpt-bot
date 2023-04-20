@@ -1,5 +1,11 @@
 import { AppDb } from '../db';
-import { MessageSessionId, SessionMessage, TextToSpeechAction, ThreadConfig } from '../types/telegram.types';
+import {
+  MessageSessionId,
+  SessionMessage,
+  TextToSpeechAction,
+  ThreadConfig,
+  ThreadSessionData,
+} from '../types/telegram.types';
 import { log } from '../utils/log.utils';
 import { AppTelegramContextAdapter } from './telegram-context-adapter';
 
@@ -8,16 +14,29 @@ export class TelegramSession {
 
   constructor(private contextAdapter: AppTelegramContextAdapter) {}
 
-  public updateMessages(allMessages: SessionMessage[]) {
-    const replyMessageId = this.getSessionMessagesByReplyId();
+  private updateCurrentThreadSession(
+    updater: (threadSession: ThreadSessionData) => ThreadSessionData,
+  ): ThreadSessionData {
+    const replyMessageId = this.getThreadId();
     const session = this.contextAdapter.getSession();
-    const chatId = this.contextAdapter.getChatId();
 
     if (!session[replyMessageId]) {
       session[replyMessageId] = {};
     }
 
-    session[replyMessageId].messages = allMessages;
+    session[replyMessageId] = updater(session[replyMessageId]);
+
+    return session[replyMessageId];
+  }
+
+  public updateMessages(allMessages: SessionMessage[]) {
+    const replyMessageId = this.getThreadId();
+    const chatId = this.contextAdapter.getChatId();
+
+    this.updateCurrentThreadSession(threadSession => {
+      threadSession.messages = allMessages;
+      return threadSession;
+    });
 
     if (allMessages.length) {
       AppDb.writeThreadHistory(chatId, replyMessageId, allMessages);
@@ -27,26 +46,25 @@ export class TelegramSession {
   }
 
   public updateThreadConfig(newConfig: Partial<ThreadConfig>) {
-    const replyMessageId = this.getSessionMessagesByReplyId();
-    const session = this.contextAdapter.getSession();
+    const replyMessageId = this.getThreadId();
     const chatId = this.contextAdapter.getChatId();
 
-    if (!session[replyMessageId]) {
-      session[replyMessageId] = {};
-    }
+    const threadSession = this.updateCurrentThreadSession(threadSession => {
+      threadSession.threadConfig = {
+        textToSpeech: TextToSpeechAction.noVoice,
+        threatName: '',
+        voiceRecognitionEnabled: true,
+        ...(threadSession.threadConfig || {}),
+        ...newConfig,
+      };
+      return threadSession;
+    });
 
-    session[replyMessageId].threadConfig = {
-      textToSpeech: TextToSpeechAction.noVoice,
-      threatName: '',
-      ...(session[replyMessageId].threadConfig || {}),
-      ...newConfig,
-    };
-
-    AppDb.writeThreadConfig(chatId, replyMessageId, session[replyMessageId].threadConfig);
+    AppDb.writeThreadConfig(chatId, replyMessageId, threadSession.threadConfig);
   }
 
   public getMessages() {
-    const replyMessageId = this.getSessionMessagesByReplyId();
+    const replyMessageId = this.getThreadId();
     const chatId = this.contextAdapter.getChatId();
     let history = this.contextAdapter.getSession()?.[replyMessageId]?.messages;
 
@@ -58,18 +76,38 @@ export class TelegramSession {
   }
 
   public getThreadConfig() {
-    const replyMessageId = this.getSessionMessagesByReplyId();
+    const replyMessageId = this.getThreadId();
     const chatId = this.contextAdapter.getChatId();
-    let config = this.contextAdapter.getSession()?.[replyMessageId]?.threadConfig;
+    const config = AppDb.readThreadConfig(chatId, replyMessageId);
 
-    if (!config) {
-      config = AppDb.readThreadConfig(chatId, replyMessageId);
-    }
+    // for some cases, session is different
+    // - User send message (with session-1)
+    // - bot replies with button
+    // - user clicks to button
+    // - bot replies the message in the thread (for some reason it is session-2)
+    // See Mistakes reply button
+
+    // let config = this.contextAdapter.getSession()?.[replyMessageId]?.threadConfig;
+    // if (!config) {
+    //   config = AppDb.readThreadConfig(chatId, replyMessageId);
+    // }
 
     return { ...(config || {}) } as ThreadConfig;
   }
 
-  private getSessionMessagesByReplyId(): MessageSessionId {
+  private getThreadId(): MessageSessionId {
     return this.contextAdapter.getThreadMessageId() || this.defaultId;
+  }
+
+  public disableVoiceRecognition() {
+    this.updateThreadConfig({ voiceRecognitionEnabled: false });
+  }
+
+  public enableVoiceRecognition() {
+    this.updateThreadConfig({ voiceRecognitionEnabled: true });
+  }
+
+  public isVoiceRecognitionEnabled() {
+    return !!this.getThreadConfig().voiceRecognitionEnabled;
   }
 }

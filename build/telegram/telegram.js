@@ -136,8 +136,16 @@ If you want to reset the conversation, type /reset
                 });
                 yield ctxDecorator.sendThreadConfig();
             }
+            if (actionNamespace === telegram_types_1.ActionNamespaces.replyMistake) {
+                yield ctxDecorator.reply('The next audio message will not be recognized.');
+                // disabled voice recognition to allow user to record and repeat correct message aloud without chatting with GPT
+                ctxDecorator.session.disableVoiceRecognition();
+            }
         }));
         this.bot.launch();
+        // Enable graceful stop
+        // process.once('SIGINT', () => this.bot.stop('SIGINT'));
+        // process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
         (0, mpeg_utils_1.initConverter)();
     }
     testLog() {
@@ -162,6 +170,10 @@ If you want to reset the conversation, type /reset
     }
     onVoice(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!ctxDecorator.session.isVoiceRecognitionEnabled()) {
+                ctxDecorator.session.enableVoiceRecognition();
+                return;
+            }
             const loadingMessage = yield ctxDecorator.replyLoadingState(`Transcribing...`);
             const fileLink = yield ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
             const filename = path_1.default.parse(fileLink.pathname).base;
@@ -182,7 +194,7 @@ If you want to reset the conversation, type /reset
                     const response = yield this.openAi.transcript(stream);
                     const text = ((_a = response.data) === null || _a === void 0 ? void 0 : _a.text) || '';
                     yield ctxDecorator.editLoadingReply(loadingMessage, `[Voice message]: ${text}`);
-                    yield this.fixMistakesReply(ctxDecorator, text);
+                    yield this.fixMyMistakesReply(ctxDecorator, text);
                     yield this.chat(ctxDecorator, text);
                 }
                 catch (error) {
@@ -194,7 +206,7 @@ If you want to reset the conversation, type /reset
             }));
         });
     }
-    fixMistakesReply(ctxDecorator, text) {
+    fixMyMistakesReply(ctxDecorator, text) {
         return __awaiter(this, void 0, void 0, function* () {
             const loadingMessage = yield ctxDecorator.replyLoadingState(`Fixing...`);
             const mistakesResp = yield this.openAi.chat([
@@ -204,7 +216,7 @@ If you want to reset the conversation, type /reset
                 },
             ]);
             const fixedText = mistakesResp.data.choices.map(choice => { var _a; return (_a = choice === null || choice === void 0 ? void 0 : choice.message) === null || _a === void 0 ? void 0 : _a.content; }).join(' | ');
-            yield ctxDecorator.editLoadingReply(loadingMessage, `[Fixed message]: ${fixedText}`);
+            yield ctxDecorator.fixMistakesReply(loadingMessage, fixedText);
         });
     }
     deleteFile(filePath) {
@@ -213,6 +225,8 @@ If you want to reset the conversation, type /reset
     // private async onText(ctx: FilteredContext<MyContext, Extract<Update, 'Update.MessageUpdate'>>) {
     onText(ctxDecorator) {
         return __awaiter(this, void 0, void 0, function* () {
+            // if user clicked to record fixed mistakes message and then started to text, then allow user to voice recognition
+            ctxDecorator.session.enableVoiceRecognition();
             yield this.chat(ctxDecorator, ctxDecorator.getText());
         });
     }
@@ -240,7 +254,7 @@ If you want to reset the conversation, type /reset
                 yield ctxDecorator.editLoadingReply(loadingMessage, text);
             }
             catch (error) {
-                (0, log_utils_1.logError)(error);
+                (0, log_utils_1.logError)(error.response);
                 const text = `[ERROR:ChatGPT]: ${((_c = (_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === null || _c === void 0 ? void 0 : _c.message) || ((_d = error.response) === null || _d === void 0 ? void 0 : _d.description) || error.response}`;
                 yield ctxDecorator.editLoadingReply(loadingMessage, text);
             }

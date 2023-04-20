@@ -117,9 +117,19 @@ If you want to reset the conversation, type /reset
         });
         await ctxDecorator.sendThreadConfig();
       }
+
+      if (actionNamespace === ActionNamespaces.replyMistake) {
+        await ctxDecorator.reply('The next audio message will not be recognized.');
+        // disabled voice recognition to allow user to record and repeat correct message aloud without chatting with GPT
+        ctxDecorator.session.disableVoiceRecognition();
+      }
     });
 
     this.bot.launch();
+
+    // Enable graceful stop
+    // process.once('SIGINT', () => this.bot.stop('SIGINT'));
+    // process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
 
     initConverter();
   }
@@ -148,6 +158,11 @@ If you want to reset the conversation, type /reset
   }
 
   private async onVoice(ctxDecorator: AppContextDecorator) {
+    if (!ctxDecorator.session.isVoiceRecognitionEnabled()) {
+      ctxDecorator.session.enableVoiceRecognition();
+      return;
+    }
+
     const loadingMessage = await ctxDecorator.replyLoadingState(`Transcribing...`);
     const fileLink = await ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
 
@@ -170,7 +185,7 @@ If you want to reset the conversation, type /reset
         const text = response.data?.text || '';
 
         await ctxDecorator.editLoadingReply(loadingMessage, `[Voice message]: ${text}`);
-        await this.fixMistakesReply(ctxDecorator, text);
+        await this.fixMyMistakesReply(ctxDecorator, text);
 
         await this.chat(ctxDecorator, text);
       } catch (error) {
@@ -186,7 +201,7 @@ If you want to reset the conversation, type /reset
     });
   }
 
-  private async fixMistakesReply(ctxDecorator: AppContextDecorator, text: string) {
+  private async fixMyMistakesReply(ctxDecorator: AppContextDecorator, text: string) {
     const loadingMessage = await ctxDecorator.replyLoadingState(`Fixing...`);
     const mistakesResp = await this.openAi.chat([
       {
@@ -197,7 +212,7 @@ If you want to reset the conversation, type /reset
 
     const fixedText = mistakesResp.data.choices.map(choice => choice?.message?.content).join(' | ');
 
-    await ctxDecorator.editLoadingReply(loadingMessage, `[Fixed message]: ${fixedText}`);
+    await ctxDecorator.fixMistakesReply(loadingMessage, fixedText);
   }
 
   private deleteFile(filePath: string) {
@@ -206,6 +221,8 @@ If you want to reset the conversation, type /reset
 
   // private async onText(ctx: FilteredContext<MyContext, Extract<Update, 'Update.MessageUpdate'>>) {
   private async onText(ctxDecorator: AppContextDecorator) {
+    // if user clicked to record fixed mistakes message and then started to text, then allow user to voice recognition
+    ctxDecorator.session.enableVoiceRecognition();
     await this.chat(ctxDecorator, ctxDecorator.getText());
   }
 
@@ -235,7 +252,7 @@ If you want to reset the conversation, type /reset
       ctxDecorator.session.updateMessages(sessionMessages);
       await ctxDecorator.editLoadingReply(loadingMessage, text);
     } catch (error) {
-      logError(error);
+      logError(error.response);
       const text = `[ERROR:ChatGPT]: ${
         error.response?.data?.error?.message || error.response?.description || error.response
       }`;

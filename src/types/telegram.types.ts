@@ -35,19 +35,23 @@ export type ThreadFileType = 'history' | 'config';
 //   threadConfig?: Record<MessageSessionId, ThreadConfig>;
 // }
 
-export type SessionData = Record<MessageSessionId, {
-  messages?: SessionMessage[],
-  threadConfig?: ThreadConfig,
-}>;
+export interface ThreadSessionData {
+  messages?: SessionMessage[];
+  threadConfig?: ThreadConfig;
+}
+
+export type SessionData = Record<MessageSessionId, ThreadSessionData>;
 
 export interface ThreadConfig {
   textToSpeech: TextToSpeechAction;
   threatName: string;
+  voiceRecognitionEnabled: boolean;
 }
 
 export enum ActionNamespaces {
   speechToText = 'speechToText',
   textToSpeech = 'textToSpeech',
+  replyMistake = 'replyMistake',
 }
 
 export enum AppLabels {
@@ -60,4 +64,13 @@ export enum TextToSpeechAction {
   en = 'en',
   ru = 'ru',
   noVoice = 'noVoice',
+}
+
+export enum ReplyMistakeAction {
+  action = 'action',
+}
+
+export enum ReplyMistakesLabel {
+  fixedMessage = 'Fixed Message',
+  recordCorrectVersion = 'Record correct version',
 }

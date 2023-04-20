@@ -7,8 +7,10 @@ import {
   ActionNamespaces,
   AppContext,
   AppLabels,
+  ReplyMistakeAction,
+  ReplyMistakesLabel,
   TelegramReplyMessage,
-  TextToSpeechAction
+  TextToSpeechAction,
 } from '../types/telegram.types';
 import { log } from '../utils/log.utils';
 import { AppTelegramContextAdapter } from './telegram-context-adapter';
@@ -81,11 +83,8 @@ export class AppTelegramContextDecorator {
     await this.editMessage(`Thread settings: \nText-to-Speech: ${AppLabels[config.textToSpeech]}`);
   }
 
-  public async editLoadingReply(
-    editMessageObj: TelegramReplyMessage,
-    text: string,
-  ) {
-    await this.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text);
+  public async editLoadingReply(editMessageObj: TelegramReplyMessage, text: string, extra?: ExtraEditMessageText) {
+    await this.telegram.editMessageText(editMessageObj.chat.id, editMessageObj.message_id, undefined, text, extra);
   }
 
   public async reply(message: string) {
@@ -137,5 +136,21 @@ export class AppTelegramContextDecorator {
     this.session.updateThreadConfig({
       threatName: this.adapter.getText(),
     });
+  }
+
+  public async fixMistakesReply(editMessageObj: TelegramReplyMessage, text: string) {
+    let extra: ExtraEditMessageText = {};
+    const correctMessageWordsRegExp = /(?<=\b(correct|no mistakes)\b\s+)\w+/gi;
+
+    if (!correctMessageWordsRegExp.test(text)) {
+      extra = Markup.inlineKeyboard([
+        Markup.button.callback(
+          ReplyMistakesLabel.recordCorrectVersion,
+          `${ActionNamespaces.replyMistake}:${ReplyMistakeAction.action}`,
+        ),
+      ]);
+    }
+
+    await this.editLoadingReply(editMessageObj, `[${ReplyMistakesLabel.fixedMessage}]: ${text}`, extra);
   }
 }
