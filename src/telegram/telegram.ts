@@ -77,6 +77,22 @@ If you want to reset the conversation, type /reset
       ctxDecorator.session.updateMessages([]);
     });
 
+    this.bot.command('ttsOn', async (ctx: AppContext) => {
+      const ctxDecorator = new AppTelegramContextDecorator(ctx);
+      await ctxDecorator.session.updateThreadConfig({
+        textToSpeech: TextToSpeechAction.en,
+      });
+      await ctxDecorator.reply('TTS switched on (en)');
+    });
+
+    this.bot.command('ttsOff', async (ctx: AppContext) => {
+      const ctxDecorator = new AppTelegramContextDecorator(ctx);
+      await ctxDecorator.session.updateThreadConfig({
+        textToSpeech: TextToSpeechAction.noVoice,
+      });
+      await ctxDecorator.reply('TTS switched off');
+    });
+
     // @ts-ignore
     this.bot.on(editedMessage('text'), async (ctx: AppContext) => {
       const ctxDecorator = new AppTelegramContextDecorator(ctx);
@@ -227,7 +243,7 @@ If you want to reset the conversation, type /reset
   }
 
   private async chat(ctxDecorator: AppContextDecorator, userMessage: string) {
-    const loadingMessage = await ctxDecorator.replyLoadingState(`Loading...`);
+    const loadingMessage = await ctxDecorator.replyLoadingState(`Processing...`);
     const sessionMessages = ctxDecorator.session.getMessages();
     const config = ctxDecorator.session.getThreadConfig();
 

@@ -13,7 +13,9 @@
 == 9) сохранять сессию на сервере, чтобы при перезапуске бота не терялся контекст
 == 10) возможность выбора включения озвучивания текста и распознавания
 
+9) fix thread config inside thread
 
+10) помечать сообщения в режиме repeat fixed message, чтобы отличать их от других сообщений в трэде. Т.к. эти сообщения не записываются в историю для чата GPT
 
 Resolved issues
 1) ```npm ERR! request to https://registry.npmjs.org/@types%2ffs-extra failed, reason: unable to get local issuer certificate```

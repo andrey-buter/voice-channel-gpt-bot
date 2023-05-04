@@ -102,6 +102,20 @@ If you want to reset the conversation, type /reset
             const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
             ctxDecorator.session.updateMessages([]);
         });
+        this.bot.command('ttsOn', (ctx) => __awaiter(this, void 0, void 0, function* () {
+            const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
+            yield ctxDecorator.session.updateThreadConfig({
+                textToSpeech: telegram_types_1.TextToSpeechAction.en,
+            });
+            yield ctxDecorator.reply('TTS switched on (en)');
+        }));
+        this.bot.command('ttsOff', (ctx) => __awaiter(this, void 0, void 0, function* () {
+            const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
+            yield ctxDecorator.session.updateThreadConfig({
+                textToSpeech: telegram_types_1.TextToSpeechAction.noVoice,
+            });
+            yield ctxDecorator.reply('TTS switched off');
+        }));
         // @ts-ignore
         this.bot.on((0, filters_1.editedMessage)('text'), (ctx) => __awaiter(this, void 0, void 0, function* () {
             const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
@@ -233,7 +247,7 @@ If you want to reset the conversation, type /reset
     chat(ctxDecorator, userMessage) {
         var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
-            const loadingMessage = yield ctxDecorator.replyLoadingState(`Loading...`);
+            const loadingMessage = yield ctxDecorator.replyLoadingState(`Processing...`);
             const sessionMessages = ctxDecorator.session.getMessages();
             const config = ctxDecorator.session.getThreadConfig();
             sessionMessages.push({

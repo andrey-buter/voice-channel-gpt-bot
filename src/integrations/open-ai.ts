@@ -14,6 +14,7 @@ export class OpenAiEngine {
   chat(messages: ChatCompletionRequestMessage[]) {
     return this.openai.createChatCompletion({
       model: 'gpt-3.5-turbo', // https://platform.openai.com/docs/models/model-endpoint-compatibility
+      // model: 'gpt-4', // https://platform.openai.com/docs/models/model-endpoint-compatibility
       messages,
     });
   }

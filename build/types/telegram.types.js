@@ -19,6 +19,13 @@ var TextToSpeechAction;
     TextToSpeechAction["ru"] = "ru";
     TextToSpeechAction["noVoice"] = "noVoice";
 })(TextToSpeechAction = exports.TextToSpeechAction || (exports.TextToSpeechAction = {}));
+// type TextToSpeechAction2 = {
+//   [prop in keyof typeof AppLabels]: string
+// }
+//
+// const TextToSpeechAction3: TextToSpeechAction2 = {
+//
+// }
 var ReplyMistakeAction;
 (function (ReplyMistakeAction) {
     ReplyMistakeAction["action"] = "action";

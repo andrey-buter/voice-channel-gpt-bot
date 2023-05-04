@@ -66,6 +66,14 @@ export enum TextToSpeechAction {
   noVoice = 'noVoice',
 }
 
+// type TextToSpeechAction2 = {
+//   [prop in keyof typeof AppLabels]: string
+// }
+//
+// const TextToSpeechAction3: TextToSpeechAction2 = {
+//
+// }
+
 export enum ReplyMistakeAction {
   action = 'action',
 }
