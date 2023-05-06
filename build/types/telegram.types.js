@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ReplyMistakesLabel = exports.ReplyMistakeAction = exports.TextToSpeechAction = exports.AppLabels = exports.ActionNamespaces = void 0;
+exports.ReplyMistakesLabel = exports.ReplyMistakeAction = exports.TextToSpeechAction = exports.SpeechToTextAction = exports.AppLabels = exports.ActionNamespaces = void 0;
 var ActionNamespaces;
 (function (ActionNamespaces) {
     ActionNamespaces["speechToText"] = "speechToText";
@@ -13,11 +13,17 @@ var AppLabels;
     AppLabels["ru"] = "Russian";
     AppLabels["noVoice"] = "No Voice";
 })(AppLabels = exports.AppLabels || (exports.AppLabels = {}));
+var SpeechToTextAction;
+(function (SpeechToTextAction) {
+    SpeechToTextAction["en"] = "en";
+    SpeechToTextAction["ru"] = "ru";
+})(SpeechToTextAction = exports.SpeechToTextAction || (exports.SpeechToTextAction = {}));
 var TextToSpeechAction;
 (function (TextToSpeechAction) {
     TextToSpeechAction["en"] = "en";
     TextToSpeechAction["ru"] = "ru";
     TextToSpeechAction["noVoice"] = "noVoice";
+    TextToSpeechAction["off"] = "noVoice";
 })(TextToSpeechAction = exports.TextToSpeechAction || (exports.TextToSpeechAction = {}));
 // type TextToSpeechAction2 = {
 //   [prop in keyof typeof AppLabels]: string

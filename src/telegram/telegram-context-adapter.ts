@@ -16,7 +16,7 @@ export class AppTelegramContextAdapter {
     return this.ctx.session;
   }
 
-  getText() {
+  getText(): string {
     const message = this.getMessageObj() as any;
 
     return message?.text || '';

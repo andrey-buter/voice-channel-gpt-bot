@@ -1,21 +1,18 @@
 import * as fs from 'fs';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai/dist/api';
 import path from 'path';
-import { sanitize } from 'sanitize-filename-ts';
 import { session, Telegraf } from 'telegraf';
-import { message, editedMessage } from 'telegraf/filters';
-import { ExtraReplyMessage } from 'telegraf/src/telegram-types';
-import { URL } from 'url';
+import { editedMessage, message } from 'telegraf/filters';
+import { ENV_VARS } from '../env';
+import { OpenAiEngine } from '../integrations/open-ai';
+import { TextToSpeechEngine } from '../integrations/text-to-speech';
+import { ActionNamespaces, AppContext, SpeechToTextAction, TextToSpeechAction } from '../types/telegram.types';
 import { getLastArrayItems } from '../utils/common.util';
 import { downloadFile } from '../utils/download.util';
 import { AppFileSystem } from '../utils/file-system';
-import { OpenAiEngine } from '../integrations/open-ai';
-import { ENV_VARS } from '../env';
 import { log, logError } from '../utils/log.utils';
 import { convertOggToMp3, initConverter } from '../utils/mpeg.utils';
 import { AppTelegramContextDecorator } from './telegram-context-decorator';
-import { ActionNamespaces, AppContext, TextToSpeechAction } from '../types/telegram.types';
-import { TextToSpeechEngine } from '../integrations/text-to-speech';
 
 type AppContextDecorator = AppTelegramContextDecorator;
 
@@ -77,20 +74,38 @@ If you want to reset the conversation, type /reset
       ctxDecorator.session.updateMessages([]);
     });
 
-    this.bot.command('ttsOn', async (ctx: AppContext) => {
+    this.bot.command('tts', async (ctx: AppContext) => {
       const ctxDecorator = new AppTelegramContextDecorator(ctx);
+      const attributes = ctxDecorator.getCommandAttributes();
+      const validValues = Object.keys(TextToSpeechAction);
+      const lang = attributes[0];
+
+      if (!validValues.includes(lang)) {
+        await ctxDecorator.reply(`Incorrect command`);
+        return;
+      }
+
       await ctxDecorator.session.updateThreadConfig({
-        textToSpeech: TextToSpeechAction.en,
+        textToSpeech: TextToSpeechAction[lang],
       });
-      await ctxDecorator.reply('TTS switched on (en)');
+      await ctxDecorator.reply(`TTS switched to ${TextToSpeechAction[lang]}`);
     });
 
-    this.bot.command('ttsOff', async (ctx: AppContext) => {
+    this.bot.command('stt', async (ctx: AppContext) => {
       const ctxDecorator = new AppTelegramContextDecorator(ctx);
+      const attributes = ctxDecorator.getCommandAttributes();
+      const validValues = Object.keys(SpeechToTextAction);
+      const lang = attributes[0];
+
+      if (!validValues.includes(lang)) {
+        await ctxDecorator.reply(`Incorrect command`);
+        return;
+      }
+
       await ctxDecorator.session.updateThreadConfig({
-        textToSpeech: TextToSpeechAction.noVoice,
+        speechToText: SpeechToTextAction[lang],
       });
-      await ctxDecorator.reply('TTS switched off');
+      await ctxDecorator.reply(`STT switched to ${SpeechToTextAction[lang]}`);
     });
 
     // @ts-ignore
@@ -126,6 +141,14 @@ If you want to reset the conversation, type /reset
       const ctxDecorator = new AppTelegramContextDecorator(ctx as unknown as AppContext);
 
       await ctx.answerCbQuery(`Saved`);
+
+      if (actionNamespace === ActionNamespaces.speechToText) {
+        ctxDecorator.session.updateThreadConfig({
+          speechToText: actionName as SpeechToTextAction,
+        });
+
+        await ctxDecorator.sendTextToSpeechQuestion();
+      }
 
       if (actionNamespace === ActionNamespaces.textToSpeech) {
         ctxDecorator.session.updateThreadConfig({
@@ -178,6 +201,7 @@ If you want to reset the conversation, type /reset
     const fileLink = await ctxDecorator.telegram.getFileLink(ctxDecorator.getVoiceFileId());
 
     const filename = path.parse(fileLink.pathname).base;
+    const config = ctxDecorator.session.getThreadConfig();
 
     try {
       await downloadFile(fileLink.href, `${this.mediaDir}/${filename}`);
@@ -192,11 +216,13 @@ If you want to reset the conversation, type /reset
       const stream = fs.createReadStream(mp3filePath);
       try {
         // @ts-ignore
-        const response = await this.openAi.transcript(stream);
+        const response = await this.openAi.transcript(stream, config.speechToText);
         const text = response.data?.text || '';
 
         await ctxDecorator.editLoadingReply(loadingMessage, `[Voice message]: ${text}`);
-        await this.fixMyMistakesReply(ctxDecorator, text);
+        if (config.speechToText === SpeechToTextAction.en) {
+          await this.fixMyMistakesReply(ctxDecorator, text);
+        }
 
         if (ctxDecorator.session.isAudioRepeatingModeEnabled()) {
           ctxDecorator.session.disableAudioRepeatingMode();

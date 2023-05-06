@@ -43,6 +43,7 @@ export interface ThreadSessionData {
 export type SessionData = Record<MessageSessionId, ThreadSessionData>;
 
 export interface ThreadConfig {
+  speechToText: SpeechToTextAction;
   textToSpeech: TextToSpeechAction;
   threatName: string;
   audioRepeatingModeEnabled: boolean;
@@ -60,10 +61,16 @@ export enum AppLabels {
   noVoice = 'No Voice',
 }
 
+export enum SpeechToTextAction {
+  en = 'en',
+  ru = 'ru',
+}
+
 export enum TextToSpeechAction {
   en = 'en',
   ru = 'ru',
   noVoice = 'noVoice',
+  off = 'noVoice',
 }
 
 // type TextToSpeechAction2 = {

@@ -31,9 +31,9 @@ class OpenAiEngine {
     // https://platform.openai.com/docs/api-reference/audio/create
     // https://github.com/openai/whisper#available-models-and-languages
     // Основной язык распознавания английский, но автоматически он распознает и русский.
-    transcript(file) {
+    transcript(file, language) {
         return __awaiter(this, void 0, void 0, function* () {
-            return this.openai.createTranscription(file, 'whisper-1', undefined, undefined, 0.2, 'en');
+            return this.openai.createTranscription(file, 'whisper-1', undefined, undefined, 0.2, language);
         });
     }
 }

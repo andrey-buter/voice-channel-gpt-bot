@@ -1,6 +1,7 @@
 import { Configuration, OpenAIApi } from 'openai';
 import { ChatCompletionRequestMessage } from 'openai/api';
 import { ENV_VARS } from '../env';
+import { SpeechToTextAction } from '../types/telegram.types';
 import { log } from '../utils/log.utils';
 
 const configuration = new Configuration({
@@ -23,7 +24,7 @@ export class OpenAiEngine {
   // https://platform.openai.com/docs/api-reference/audio/create
   // https://github.com/openai/whisper#available-models-and-languages
   // Основной язык распознавания английский, но автоматически он распознает и русский.
-  async transcript(file: File) {
-    return this.openai.createTranscription(file, 'whisper-1', undefined, undefined, 0.2, 'en');
+  async transcript(file: File, language: SpeechToTextAction) {
+    return this.openai.createTranscription(file, 'whisper-1', undefined, undefined, 0.2, language);
   }
 }

@@ -8,7 +8,7 @@ import {
   AppContext,
   AppLabels,
   ReplyMistakeAction,
-  ReplyMistakesLabel,
+  ReplyMistakesLabel, SpeechToTextAction,
   TelegramReplyMessage,
   TextToSpeechAction,
 } from '../types/telegram.types';
@@ -53,12 +53,24 @@ export class AppTelegramContextDecorator {
     return this.adapter.isMainChatMessage();
   }
 
+  async sendSpeechToTextQuestion() {
+  	const actionNamespace = ActionNamespaces.speechToText;
+
+  	return await this.ctx.sendMessage('What language should be recognized?', {
+  		reply_to_message_id: this.adapter.getMessageId(),
+  		...Markup.inlineKeyboard([
+  			Markup.button.callback(AppLabels.en, `${actionNamespace}:${SpeechToTextAction.en}`),
+  			Markup.button.callback(AppLabels.ru, `${actionNamespace}:${SpeechToTextAction.ru}`),
+  		]),
+  	});
+  }
+
   // callback answer имеет таймаут и не живет вечно. Потому кнопки нельзя переназначать через какое-то время.
   async sendTextToSpeechQuestion() {
     const actionNamespace = ActionNamespaces.textToSpeech;
 
-    return await this.ctx.sendMessage('What language should be voiced?', {
-      reply_to_message_id: this.adapter.getMessageId(),
+    return await this.editMessage('What language should be voiced?', {
+      // reply_to_message_id: this.adapter.getMessageId(),
       ...Markup.inlineKeyboard([
         Markup.button.callback(AppLabels.en, `${actionNamespace}:${TextToSpeechAction.en}`),
         Markup.button.callback(AppLabels.ru, `${actionNamespace}:${TextToSpeechAction.ru}`),
@@ -80,7 +92,7 @@ export class AppTelegramContextDecorator {
   async sendThreadConfig() {
     const config = this.session.getThreadConfig();
 
-    await this.editMessage(`Thread settings: \nText-to-Speech: ${AppLabels[config.textToSpeech]}`);
+    await this.editMessage(`Thread settings: \nSpeech-to-Text: ${AppLabels[config.speechToText]}\nText-to-Speech: ${AppLabels[config.textToSpeech]}`);
   }
 
   public async editLoadingReply(editMessageObj: TelegramReplyMessage, text: string, extra?: ExtraEditMessageText) {
@@ -129,7 +141,7 @@ export class AppTelegramContextDecorator {
 
   public async sendFirstThreadMessage() {
     this.saveThreadTextToConfig();
-    return await this.sendTextToSpeechQuestion();
+    return await this.sendSpeechToTextQuestion();
   }
 
   public saveThreadTextToConfig() {
@@ -152,5 +164,11 @@ export class AppTelegramContextDecorator {
     }
 
     await this.editLoadingReply(editMessageObj, `[${ReplyMistakesLabel.fixedMessage}]: ${text}`, extra);
+  }
+
+  public getCommandAttributes() {
+    const commands = this.getText().split(' ');
+    commands.shift();
+    return commands;
   }
 }

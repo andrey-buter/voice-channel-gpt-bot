@@ -2,11 +2,11 @@ import { AppDb } from '../db';
 import {
   MessageSessionId,
   SessionMessage,
+  SpeechToTextAction,
   TextToSpeechAction,
   ThreadConfig,
   ThreadSessionData,
 } from '../types/telegram.types';
-import { log } from '../utils/log.utils';
 import { AppTelegramContextAdapter } from './telegram-context-adapter';
 
 export class TelegramSession {
@@ -51,6 +51,7 @@ export class TelegramSession {
 
     const threadSession = this.updateCurrentThreadSession(threadSession => {
       threadSession.threadConfig = {
+        speechToText: SpeechToTextAction.en,
         textToSpeech: TextToSpeechAction.noVoice,
         threatName: '',
         audioRepeatingModeEnabled: false,

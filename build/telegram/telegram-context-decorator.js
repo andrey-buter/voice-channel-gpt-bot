@@ -47,11 +47,20 @@ class AppTelegramContextDecorator {
     isMainChatMessage() {
         return this.adapter.isMainChatMessage();
     }
+    sendSpeechToTextQuestion() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const actionNamespace = telegram_types_1.ActionNamespaces.speechToText;
+            return yield this.ctx.sendMessage('What language should be recognized?', Object.assign({ reply_to_message_id: this.adapter.getMessageId() }, telegraf_1.Markup.inlineKeyboard([
+                telegraf_1.Markup.button.callback(telegram_types_1.AppLabels.en, `${actionNamespace}:${telegram_types_1.SpeechToTextAction.en}`),
+                telegraf_1.Markup.button.callback(telegram_types_1.AppLabels.ru, `${actionNamespace}:${telegram_types_1.SpeechToTextAction.ru}`),
+            ])));
+        });
+    }
     // callback answer имеет таймаут и не живет вечно. Потому кнопки нельзя переназначать через какое-то время.
     sendTextToSpeechQuestion() {
         return __awaiter(this, void 0, void 0, function* () {
             const actionNamespace = telegram_types_1.ActionNamespaces.textToSpeech;
-            return yield this.ctx.sendMessage('What language should be voiced?', Object.assign({ reply_to_message_id: this.adapter.getMessageId() }, telegraf_1.Markup.inlineKeyboard([
+            return yield this.editMessage('What language should be voiced?', Object.assign({}, telegraf_1.Markup.inlineKeyboard([
                 telegraf_1.Markup.button.callback(telegram_types_1.AppLabels.en, `${actionNamespace}:${telegram_types_1.TextToSpeechAction.en}`),
                 telegraf_1.Markup.button.callback(telegram_types_1.AppLabels.ru, `${actionNamespace}:${telegram_types_1.TextToSpeechAction.ru}`),
                 telegraf_1.Markup.button.callback(telegram_types_1.AppLabels.noVoice, `${actionNamespace}:${telegram_types_1.TextToSpeechAction.noVoice}`),
@@ -66,7 +75,7 @@ class AppTelegramContextDecorator {
     sendThreadConfig() {
         return __awaiter(this, void 0, void 0, function* () {
             const config = this.session.getThreadConfig();
-            yield this.editMessage(`Thread settings: \nText-to-Speech: ${telegram_types_1.AppLabels[config.textToSpeech]}`);
+            yield this.editMessage(`Thread settings: \nSpeech-to-Text: ${telegram_types_1.AppLabels[config.speechToText]}\nText-to-Speech: ${telegram_types_1.AppLabels[config.textToSpeech]}`);
         });
     }
     editLoadingReply(editMessageObj, text, extra) {
@@ -119,7 +128,7 @@ class AppTelegramContextDecorator {
     sendFirstThreadMessage() {
         return __awaiter(this, void 0, void 0, function* () {
             this.saveThreadTextToConfig();
-            return yield this.sendTextToSpeechQuestion();
+            return yield this.sendSpeechToTextQuestion();
         });
     }
     saveThreadTextToConfig() {
@@ -138,6 +147,11 @@ class AppTelegramContextDecorator {
             }
             yield this.editLoadingReply(editMessageObj, `[${telegram_types_1.ReplyMistakesLabel.fixedMessage}]: ${text}`, extra);
         });
+    }
+    getCommandAttributes() {
+        const commands = this.getText().split(' ');
+        commands.shift();
+        return commands;
     }
 }
 exports.AppTelegramContextDecorator = AppTelegramContextDecorator;
