@@ -35,7 +35,7 @@ class TelegramSession {
         const replyMessageId = this.getThreadId();
         const chatId = this.contextAdapter.getChatId();
         const threadSession = this.updateCurrentThreadSession(threadSession => {
-            threadSession.threadConfig = Object.assign(Object.assign({ speechToText: telegram_types_1.SpeechToTextAction.en, textToSpeech: telegram_types_1.TextToSpeechAction.noVoice, threatName: '', audioRepeatingModeEnabled: false }, (threadSession.threadConfig || {})), newConfig);
+            threadSession.threadConfig = Object.assign(Object.assign({ speechToText: telegram_types_1.SpeechToTextAction.en, textToSpeech: telegram_types_1.TextToSpeechAction.noVoice, isChatGptEnabled: true, threatName: '', isAudioRepeatingModeEnabled: false }, (threadSession.threadConfig || {})), newConfig);
             return threadSession;
         });
         db_1.AppDb.writeThreadConfig(chatId, replyMessageId, threadSession.threadConfig);
@@ -70,13 +70,16 @@ class TelegramSession {
         return this.contextAdapter.getThreadMessageId() || this.defaultId;
     }
     disableAudioRepeatingMode() {
-        this.updateThreadConfig({ audioRepeatingModeEnabled: false });
+        this.updateThreadConfig({ isAudioRepeatingModeEnabled: false });
     }
     enableAudioRepeatingMode() {
-        this.updateThreadConfig({ audioRepeatingModeEnabled: true });
+        this.updateThreadConfig({ isAudioRepeatingModeEnabled: true });
     }
     isAudioRepeatingModeEnabled() {
-        return !!this.getThreadConfig().audioRepeatingModeEnabled;
+        return !!this.getThreadConfig().isAudioRepeatingModeEnabled;
+    }
+    isChatGptEnabled() {
+        return !!this.getThreadConfig().isChatGptEnabled;
     }
 }
 exports.TelegramSession = TelegramSession;

@@ -130,6 +130,20 @@ If you want to reset the conversation, type /reset
             });
             yield ctxDecorator.reply(`STT switched to ${telegram_types_1.SpeechToTextAction[lang]}`);
         }));
+        this.bot.command('gpt', (ctx) => __awaiter(this, void 0, void 0, function* () {
+            const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
+            const attributes = ctxDecorator.getCommandAttributes();
+            const validValues = Object.keys(telegram_types_1.ChatGptStatus);
+            const status = attributes[0];
+            if (!validValues.includes(status)) {
+                yield ctxDecorator.reply(`Incorrect command`);
+                return;
+            }
+            yield ctxDecorator.session.updateThreadConfig({
+                isChatGptEnabled: !!telegram_types_1.ChatGptStatus[status],
+            });
+            yield ctxDecorator.reply(`Chat GPT is ${status}`);
+        }));
         // @ts-ignore
         this.bot.on((0, filters_1.editedMessage)('text'), (ctx) => __awaiter(this, void 0, void 0, function* () {
             const ctxDecorator = new telegram_context_decorator_1.AppTelegramContextDecorator(ctx);
@@ -270,6 +284,9 @@ If you want to reset the conversation, type /reset
     chat(ctxDecorator, userMessage) {
         var _a, _b, _c, _d;
         return __awaiter(this, void 0, void 0, function* () {
+            if (!ctxDecorator.session.isChatGptEnabled()) {
+                return;
+            }
             const loadingMessage = yield ctxDecorator.replyLoadingState(`Processing...`);
             const sessionMessages = ctxDecorator.session.getMessages();
             const config = ctxDecorator.session.getThreadConfig();

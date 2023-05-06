@@ -46,7 +46,8 @@ export interface ThreadConfig {
   speechToText: SpeechToTextAction;
   textToSpeech: TextToSpeechAction;
   threatName: string;
-  audioRepeatingModeEnabled: boolean;
+  isAudioRepeatingModeEnabled: boolean;
+  isChatGptEnabled: boolean;
 }
 
 export enum ActionNamespaces {
@@ -59,6 +60,11 @@ export enum AppLabels {
   en = 'English',
   ru = 'Russian',
   noVoice = 'No Voice',
+}
+
+export enum ChatGptStatus {
+  on = 1,
+  off = 0,
 }
 
 export enum SpeechToTextAction {

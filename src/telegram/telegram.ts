@@ -6,7 +6,13 @@ import { editedMessage, message } from 'telegraf/filters';
 import { ENV_VARS } from '../env';
 import { OpenAiEngine } from '../integrations/open-ai';
 import { TextToSpeechEngine } from '../integrations/text-to-speech';
-import { ActionNamespaces, AppContext, SpeechToTextAction, TextToSpeechAction } from '../types/telegram.types';
+import {
+  ActionNamespaces,
+  AppContext,
+  ChatGptStatus,
+  SpeechToTextAction,
+  TextToSpeechAction
+} from '../types/telegram.types';
 import { getLastArrayItems } from '../utils/common.util';
 import { downloadFile } from '../utils/download.util';
 import { AppFileSystem } from '../utils/file-system';
@@ -106,6 +112,23 @@ If you want to reset the conversation, type /reset
         speechToText: SpeechToTextAction[lang],
       });
       await ctxDecorator.reply(`STT switched to ${SpeechToTextAction[lang]}`);
+    });
+
+    this.bot.command('gpt', async (ctx: AppContext) => {
+      const ctxDecorator = new AppTelegramContextDecorator(ctx);
+      const attributes = ctxDecorator.getCommandAttributes();
+      const validValues = Object.keys(ChatGptStatus);
+      const status = attributes[0];
+
+      if (!validValues.includes(status)) {
+        await ctxDecorator.reply(`Incorrect command`);
+        return;
+      }
+
+      await ctxDecorator.session.updateThreadConfig({
+        isChatGptEnabled: !!ChatGptStatus[status],
+      });
+      await ctxDecorator.reply(`Chat GPT is ${status}`);
     });
 
     // @ts-ignore
@@ -269,6 +292,10 @@ If you want to reset the conversation, type /reset
   }
 
   private async chat(ctxDecorator: AppContextDecorator, userMessage: string) {
+    if (!ctxDecorator.session.isChatGptEnabled()) {
+      return;
+    }
+
     const loadingMessage = await ctxDecorator.replyLoadingState(`Processing...`);
     const sessionMessages = ctxDecorator.session.getMessages();
     const config = ctxDecorator.session.getThreadConfig();

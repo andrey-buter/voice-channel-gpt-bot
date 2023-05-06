@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ReplyMistakesLabel = exports.ReplyMistakeAction = exports.TextToSpeechAction = exports.SpeechToTextAction = exports.AppLabels = exports.ActionNamespaces = void 0;
+exports.ReplyMistakesLabel = exports.ReplyMistakeAction = exports.TextToSpeechAction = exports.SpeechToTextAction = exports.ChatGptStatus = exports.AppLabels = exports.ActionNamespaces = void 0;
 var ActionNamespaces;
 (function (ActionNamespaces) {
     ActionNamespaces["speechToText"] = "speechToText";
@@ -13,6 +13,11 @@ var AppLabels;
     AppLabels["ru"] = "Russian";
     AppLabels["noVoice"] = "No Voice";
 })(AppLabels = exports.AppLabels || (exports.AppLabels = {}));
+var ChatGptStatus;
+(function (ChatGptStatus) {
+    ChatGptStatus[ChatGptStatus["on"] = 1] = "on";
+    ChatGptStatus[ChatGptStatus["off"] = 0] = "off";
+})(ChatGptStatus = exports.ChatGptStatus || (exports.ChatGptStatus = {}));
 var SpeechToTextAction;
 (function (SpeechToTextAction) {
     SpeechToTextAction["en"] = "en";

@@ -53,8 +53,9 @@ export class TelegramSession {
       threadSession.threadConfig = {
         speechToText: SpeechToTextAction.en,
         textToSpeech: TextToSpeechAction.noVoice,
+        isChatGptEnabled: true,
         threatName: '',
-        audioRepeatingModeEnabled: false,
+        isAudioRepeatingModeEnabled: false,
         ...(threadSession.threadConfig || {}),
         ...newConfig,
       };
@@ -101,14 +102,18 @@ export class TelegramSession {
   }
 
   public disableAudioRepeatingMode() {
-    this.updateThreadConfig({ audioRepeatingModeEnabled: false });
+    this.updateThreadConfig({ isAudioRepeatingModeEnabled: false });
   }
 
   public enableAudioRepeatingMode() {
-    this.updateThreadConfig({ audioRepeatingModeEnabled: true });
+    this.updateThreadConfig({ isAudioRepeatingModeEnabled: true });
   }
 
   public isAudioRepeatingModeEnabled() {
-    return !!this.getThreadConfig().audioRepeatingModeEnabled;
+    return !!this.getThreadConfig().isAudioRepeatingModeEnabled;
+  }
+
+  public isChatGptEnabled() {
+    return !!this.getThreadConfig().isChatGptEnabled;
   }
 }
