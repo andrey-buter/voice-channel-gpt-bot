@@ -232,7 +232,7 @@ If you want to reset the conversation, type /reset
             const filePath = `./${this.mediaDir}/${filename}`;
             const mp3filePath = `./${this.mediaDir}/${filename}`.replace('.oga', '.mp3');
             (0, mpeg_utils_1.convertOggToMp3)(filePath, mp3filePath, () => __awaiter(this, void 0, void 0, function* () {
-                var _a;
+                var _a, _b, _c, _d, _e;
                 const stream = fs.createReadStream(mp3filePath);
                 try {
                     // @ts-ignore
@@ -249,8 +249,8 @@ If you want to reset the conversation, type /reset
                     yield this.chat(ctxDecorator, text);
                 }
                 catch (error) {
-                    (0, log_utils_1.log)(error.response.data);
-                    yield ctxDecorator.editLoadingReply(loadingMessage, `[ERROR:Transcription] ${error.response.data.error.message}`);
+                    (0, log_utils_1.log)(((_b = error.response) === null || _b === void 0 ? void 0 : _b.data) || error.response);
+                    yield ctxDecorator.editLoadingReply(loadingMessage, `[ERROR:Transcription] ${((_e = (_d = (_c = error.response) === null || _c === void 0 ? void 0 : _c.data) === null || _d === void 0 ? void 0 : _d.error) === null || _e === void 0 ? void 0 : _e.message) || error}`);
                 }
                 this.deleteFile(filePath);
                 this.deleteFile(mp3filePath);

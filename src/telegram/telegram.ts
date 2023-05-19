@@ -19,8 +19,10 @@ import { AppFileSystem } from '../utils/file-system';
 import { log, logError } from '../utils/log.utils';
 import { convertOggToMp3, initConverter } from '../utils/mpeg.utils';
 import { AppTelegramContextDecorator } from './telegram-context-decorator';
+// import { AppTelegramContextDecorator } from './telegram-context-decorator';
 
 type AppContextDecorator = AppTelegramContextDecorator;
+
 
 export class TelegramBotMessageHandler {
   private readonly bot = new Telegraf<AppContext>(ENV_VARS.TELEGRAM_TOKEN);
@@ -254,10 +256,10 @@ If you want to reset the conversation, type /reset
 
         await this.chat(ctxDecorator, text);
       } catch (error) {
-        log(error.response.data);
+        log(error.response?.data || error.response);
         await ctxDecorator.editLoadingReply(
           loadingMessage,
-          `[ERROR:Transcription] ${error.response.data.error.message}`,
+          `[ERROR:Transcription] ${error.response?.data?.error?.message || error}`,
         );
       }
 
